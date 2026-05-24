@@ -20,6 +20,7 @@ export type AppInstance = {
     createUploads(files: File[]): Promise<UploadListItem[]>;
     subscribeUploadEvents(uploadId: string): void;
     disposeUploadStream(uploadId: string): void;
+    disposeUploadResources(clientId: string): void;
   };
   candidate: {
     fetchList(input?: CandidateListQueryInput): Promise<CandidateListItem[]>;

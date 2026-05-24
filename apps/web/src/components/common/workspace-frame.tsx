@@ -10,14 +10,11 @@ export function WorkspaceFrame({
 }) {
   return (
     <main className="app-shell">
-      <div
-        className={cn(
-          "mx-auto grid min-h-screen w-full max-w-7xl gap-8 px-6 py-8 lg:grid-cols-[260px_minmax(0,1fr)] lg:px-10",
-          className
-        )}
-      >
+      <div className="flex min-h-screen w-full">
         <AppSidebar />
-        <div className="flex min-w-0 flex-col gap-8">{children}</div>
+        <div className="min-w-0 flex-1">
+          <div className={cn("app-page", className)}>{children}</div>
+        </div>
       </div>
     </main>
   );

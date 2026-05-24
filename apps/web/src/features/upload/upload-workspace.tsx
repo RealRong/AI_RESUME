@@ -1,179 +1,338 @@
 "use client";
 
-import { useMemo, useRef } from "react";
-import { Upload, FileText } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useDropzone } from "react-dropzone";
+import { FileText, ImageOff, LoaderCircle, Upload } from "lucide-react";
 import { PageShell } from "@/components/common/page-shell";
+import { EmptyState } from "@/components/common/empty-state";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { EmptyState } from "@/components/common/empty-state";
-import { useInstance } from "@/instance";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useUploadQueueState } from "@/domains/upload/hooks";
+import type { UploadQueueItem } from "@/domains/upload/types";
+import { useInstance } from "@/instance";
+import { cn } from "@/lib/utils";
+import { getUploadStatusLabel } from "@/lib/utils/display";
+
+function formatFileSize(size?: number) {
+  if (!size) {
+    return null;
+  }
+
+  if (size < 1024 * 1024) {
+    return `${Math.round(size / 102.4) / 10} KB`;
+  }
+
+  return `${Math.round(size / (1024 * 102.4)) / 10} MB`;
+}
+
+function UploadPreviewThumbnail({ item }: { item: UploadQueueItem }) {
+  if (item.preview?.thumbnailStatus === "ready" && item.preview.thumbnailUrl) {
+    return (
+      <div className="relative h-[164px] w-[118px] overflow-hidden rounded-lg bg-background">
+        <img
+          src={item.preview.thumbnailUrl}
+          alt={`${item.fileName} 首页缩略图`}
+          className="h-full w-full object-cover"
+        />
+      </div>
+    );
+  }
+
+  if (item.preview?.thumbnailStatus === "generating") {
+    return <Skeleton className="h-[164px] w-[118px] rounded-lg" />;
+  }
+
+  return (
+    <div className="flex h-[164px] w-[118px] flex-col items-center justify-center rounded-lg bg-muted text-fg-muted">
+      {item.preview?.thumbnailStatus === "failed" ? (
+        <ImageOff className="h-6 w-6" />
+      ) : (
+        <FileText className="h-6 w-6" />
+      )}
+      <p className="mt-3 text-xs">PDF 预览</p>
+    </div>
+  );
+}
+
+function UploadBasicInfo({ item }: { item: UploadQueueItem }) {
+  const basic = item.partialExtraction?.basic;
+
+  if (basic) {
+    const rows = [
+      { label: "姓名", value: basic.name },
+      { label: "邮箱", value: basic.email },
+      { label: "电话", value: basic.phone },
+      { label: "城市", value: basic.city }
+    ].filter((row) => row.value);
+
+    if (rows.length === 0) {
+      return <p className="text-sm text-fg-muted">正在整理候选人基础信息</p>;
+    }
+
+    return (
+      <div className="grid gap-2 text-sm">
+        {rows.map((row) => (
+          <div key={row.label} className="flex items-center justify-between gap-4">
+            <span className="text-fg-muted">{row.label}</span>
+            <span className="truncate text-right text-foreground">{String(row.value)}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (item.status === "uploading" || item.status === "parsing" || item.status === "extracting") {
+    return (
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-2/3" />
+        <Skeleton className="h-4 w-1/2" />
+        <Skeleton className="h-4 w-3/5" />
+      </div>
+    );
+  }
+
+  return <p className="text-sm text-fg-muted">基础信息将在处理完成后显示</p>;
+}
+
+function UploadQueueRow({ item }: { item: UploadQueueItem }) {
+  const progressLabel = item.status === "completed" ? 100 : item.progress;
+  const recentEvent = item.events?.[item.events.length - 1];
+
+  return (
+    <div className="grid gap-4 py-5 first:pt-0 last:pb-0 lg:grid-cols-[118px_minmax(0,1fr)] lg:items-start">
+      <UploadPreviewThumbnail item={item} />
+
+      <div className="min-w-0 space-y-4">
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-foreground">{item.fileName}</p>
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-fg-muted">
+                <span>{item.candidateId || "候选人档案准备中"}</span>
+                {formatFileSize(item.fileSize) ? <span>{formatFileSize(item.fileSize)}</span> : null}
+                {item.preview?.pageCount ? <span>{item.preview.pageCount} 页</span> : null}
+              </div>
+            </div>
+            <Badge variant="outline">{getUploadStatusLabel(item.status)}</Badge>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-4 text-xs text-fg-muted">
+              <span>
+                {recentEvent?.payload.message
+                  ? String(recentEvent.payload.message)
+                  : item.status === "completed"
+                    ? "简历已完成处理"
+                    : item.status === "failed"
+                      ? "处理过程中出现错误"
+                      : "正在处理当前简历"}
+              </span>
+              <span>{progressLabel}%</span>
+            </div>
+            <Progress value={progressLabel} />
+          </div>
+        </div>
+
+        {item.error ? <p className="text-sm text-destructive">{item.error}</p> : null}
+
+        <div className="rounded-lg bg-muted/50 p-4">
+          <UploadBasicInfo item={item} />
+        </div>
+        {item.preview?.thumbnailError ? (
+          <p className="text-xs leading-5 text-fg-muted">
+            缩略图预览不可用：{item.preview.thumbnailError}
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
 export function UploadWorkspace() {
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const instance = useInstance();
   const { queue } = useUploadQueueState();
+  const [rejectionMessage, setRejectionMessage] = useState<string | null>(null);
 
+  const orderedQueue = useMemo(() => [...queue].reverse(), [queue]);
   const completedCount = useMemo(
     () => queue.filter((item) => item.status === "completed").length,
     [queue]
   );
+  const failedCount = useMemo(
+    () => queue.filter((item) => item.status === "failed").length,
+    [queue]
+  );
+  const processingCount = useMemo(
+    () => queue.filter((item) => item.status !== "completed" && item.status !== "failed").length,
+    [queue]
+  );
 
-  async function handleFiles(files: FileList | null) {
-    if (!files || files.length === 0) return;
-    const uploads = await instance.upload.createUploads(Array.from(files));
-    for (const upload of uploads) {
-      instance.upload.subscribeUploadEvents(upload.uploadId);
+  const dropzone = useDropzone({
+    accept: {
+      "application/pdf": [".pdf"]
+    },
+    maxFiles: 10,
+    maxSize: 10 * 1024 * 1024,
+    multiple: true,
+    onDropAccepted(files) {
+      setRejectionMessage(null);
+      void instance.upload
+        .createUploads(files)
+        .then((uploads) => {
+          for (const upload of uploads) {
+            instance.upload.subscribeUploadEvents(upload.uploadId);
+          }
+        })
+        .catch((error: unknown) => {
+          setRejectionMessage(
+            error instanceof Error ? error.message : "上传请求失败，请稍后重试。"
+          );
+        });
+    },
+    onDropRejected(rejections) {
+      const firstError = rejections[0]?.errors[0];
+
+      if (!firstError) {
+        setRejectionMessage("文件暂时无法上传，请重试。");
+        return;
+      }
+
+      if (firstError.code === "file-invalid-type") {
+        setRejectionMessage("仅支持上传 PDF 文件。");
+        return;
+      }
+
+      if (firstError.code === "too-many-files") {
+        setRejectionMessage("单次上传文件过多，请分批上传。");
+        return;
+      }
+
+      if (firstError.code === "file-too-large") {
+        setRejectionMessage("单份文件不能超过 10MB。");
+        return;
+      }
+
+      setRejectionMessage(firstError.message);
     }
-  }
+  });
 
   return (
     <PageShell
       title="上传中心"
-      description="通过批量上传 PDF 简历，实时跟踪解析与提取过程。上传、状态更新与事件流都经由 upload instance 和 upload-domain 统一管理。"
+      description="批量上传 PDF 简历，实时查看首页缩略图、处理进度和基础信息。"
       actions={
         <>
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept="application/pdf"
-            className="hidden"
-            onChange={(event) => void handleFiles(event.target.files)}
-          />
-          <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+          <Button variant="outline" onClick={dropzone.open}>
             选择 PDF
           </Button>
-          <Button onClick={() => fileInputRef.current?.click()}>
-            批量上传
-          </Button>
+          <Button onClick={dropzone.open}>开始上传</Button>
         </>
       }
       aside={
-        <section className="grid gap-4 md:grid-cols-3">
+        <section className="grid gap-4 md:grid-cols-4">
           <div className="app-kpi">
-            <p className="text-xs uppercase tracking-[0.14em] text-fg-muted">队列总数</p>
+            <p className="text-xs uppercase tracking-[0.14em] text-fg-muted">总数</p>
             <p className="mt-2 text-2xl font-semibold">{queue.length}</p>
+          </div>
+          <div className="app-kpi">
+            <p className="text-xs uppercase tracking-[0.14em] text-fg-muted">处理中</p>
+            <p className="mt-2 text-2xl font-semibold">{processingCount}</p>
           </div>
           <div className="app-kpi">
             <p className="text-xs uppercase tracking-[0.14em] text-fg-muted">已完成</p>
             <p className="mt-2 text-2xl font-semibold">{completedCount}</p>
           </div>
           <div className="app-kpi">
-            <p className="text-xs uppercase tracking-[0.14em] text-fg-muted">进行中</p>
-            <p className="mt-2 text-2xl font-semibold">
-              {queue.filter((item) => item.status !== "completed" && item.status !== "failed").length}
-            </p>
+            <p className="text-xs uppercase tracking-[0.14em] text-fg-muted">失败</p>
+            <p className="mt-2 text-2xl font-semibold">{failedCount}</p>
           </div>
         </section>
       }
     >
-      <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-        <Card className="border-dashed">
-          <CardHeader>
-            <CardTitle>Resume Upload Dropzone</CardTitle>
-            <CardDescription>
-              支持拖拽上传与点击上传。当前版本限制 PDF，后端会返回上传记录并开始 SSE 解析流。
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="flex h-72 w-full flex-col items-center justify-center gap-4 rounded-lg border border-dashed border-border bg-muted/30 text-center transition hover:bg-muted/60"
-            >
-              <Upload className="h-7 w-7" />
-              <div className="space-y-2">
-                <p className="text-base font-medium">拖拽 PDF 到此处，或点击选择文件</p>
-                <p className="text-sm text-fg-muted">建议单次上传 5-10 份，每份不超过 10MB</p>
-              </div>
-            </button>
-          </CardContent>
-        </Card>
-
+      <section>
         <Card>
-          <CardHeader>
-            <CardTitle>Extraction Stream</CardTitle>
-            <CardDescription>展示最新上传任务的阶段、事件和基础抽取结果。</CardDescription>
+          <CardHeader className="pb-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-1">
+                <CardTitle>上传文件</CardTitle>
+                <CardDescription>拖拽或选择本地 PDF，进入队列后会立即生成首页缩略图。</CardDescription>
+              </div>
+              <Badge variant="outline">支持批量上传</Badge>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {queue.length === 0 ? (
-              <EmptyState
-                title="暂无上传任务"
-                description="上传后这里会实时展示 parsing、extracting、completed 等事件。"
-              />
-            ) : (
-              queue.slice(0, 3).map((item) => (
-                <div key={item.uploadId} className="space-y-3 rounded-lg border border-border p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{item.fileName}</p>
-                      <p className="text-xs text-fg-muted">{item.uploadId}</p>
-                    </div>
-                    <Badge variant="outline">{item.status}</Badge>
-                  </div>
-                  <Progress value={item.progress} />
-                  {item.partialExtraction?.basic ? (
-                    <div className="rounded-md bg-muted/50 p-3 text-xs text-fg-muted">
-                      <pre className="whitespace-pre-wrap font-mono">
-                        {JSON.stringify(item.partialExtraction.basic, null, 2)}
-                      </pre>
-                    </div>
-                  ) : null}
-                </div>
-              ))
-            )}
+            <div
+              {...dropzone.getRootProps()}
+              className={cn(
+                "flex min-h-[320px] cursor-pointer flex-col items-center justify-center rounded-xl bg-muted/60 px-8 text-center transition",
+                dropzone.isDragActive ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "hover:bg-muted"
+              )}
+            >
+              <input {...dropzone.getInputProps()} />
+              <div className="rounded-full bg-background p-4">
+                {dropzone.isDragActive ? (
+                  <LoaderCircle className="h-7 w-7 animate-spin" />
+                ) : (
+                  <Upload className="h-7 w-7" />
+                )}
+              </div>
+              <div className="mt-5 space-y-2">
+                <p className="text-lg font-medium text-foreground">
+                  {dropzone.isDragActive ? "松开即可开始上传" : "拖拽 PDF 到此处，或点击选择文件"}
+                </p>
+                <p className="text-sm leading-6 text-fg-muted">
+                  建议单次上传 5-10 份，每份不超过 10MB。系统会在上传过程中同步生成首页缩略图。
+                </p>
+              </div>
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-xs text-fg-muted">
+                <span className="rounded-full bg-background px-3 py-1">PDF</span>
+                <span className="rounded-full bg-background px-3 py-1">首页缩略图</span>
+                <span className="rounded-full bg-background px-3 py-1">基础信息提取</span>
+              </div>
+            </div>
+
+            {rejectionMessage ? (
+              <p className="text-sm text-destructive">{rejectionMessage}</p>
+            ) : null}
           </CardContent>
         </Card>
       </section>
 
       <section className="mt-6">
         <Card>
-          <CardHeader>
-            <CardTitle>Upload Queue</CardTitle>
-            <CardDescription>所有上传都通过 upload-domain 管理，不在页面内直接维护业务状态。</CardDescription>
+          <CardHeader className="pb-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-1">
+                <CardTitle>上传队列</CardTitle>
+                <CardDescription>所有上传任务都在这里统一查看，并按最新任务优先排序。</CardDescription>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {orderedQueue[0] ? (
+                  <Badge variant="secondary">
+                    最新任务：{getUploadStatusLabel(orderedQueue[0].status)}
+                  </Badge>
+                ) : null}
+                <Badge variant="outline">{queue.length} 条记录</Badge>
+              </div>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {queue.length === 0 ? (
+          <CardContent>
+            {orderedQueue.length === 0 ? (
               <EmptyState
                 title="队列为空"
-                description="开始上传后，会在这里出现每份简历的进度、错误信息和提取结果。"
+                description="开始上传后，这里会出现每份简历的缩略图、进度和提取结果。"
+                inset
               />
             ) : (
-              queue.map((item) => (
-                <div key={item.uploadId} className="space-y-4 rounded-lg border border-border p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div className="rounded-md bg-muted p-2">
-                        <FileText className="h-4 w-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">{item.fileName}</p>
-                        <p className="text-xs text-fg-muted">{item.candidateId || "candidate pending"}</p>
-                      </div>
-                    </div>
-                    <Badge>{item.status}</Badge>
-                  </div>
-                  <Progress value={item.progress} />
-                  {item.error ? <p className="text-sm text-destructive">{item.error}</p> : null}
-                  {item.events?.length ? (
-                    <>
-                      <Separator />
-                      <div className="space-y-2 text-xs text-fg-muted">
-                        {item.events.slice(-3).map((event, index) => (
-                          <div key={`${event.type}-${index}`} className="flex justify-between gap-4">
-                            <span>{event.type}</span>
-                            <span className="truncate">{JSON.stringify(event.payload)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  ) : null}
-                </div>
-              ))
+              <div className="divide-y divide-border">
+                {orderedQueue.map((item) => (
+                  <UploadQueueRow key={item.clientId} item={item} />
+                ))}
+              </div>
             )}
           </CardContent>
         </Card>

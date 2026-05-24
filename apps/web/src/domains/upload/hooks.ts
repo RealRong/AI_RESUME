@@ -8,6 +8,9 @@ import {
   markUploadCompletedAtom,
   markUploadFailedAtom,
   replaceQueuedUploadsAtom,
+  setUploadPreviewFailedAtom,
+  setUploadPreviewGeneratingAtom,
+  setUploadPreviewReadyAtom,
   setPartialExtractionAtom,
   setUploadProgressAtom
 } from "./actions";
@@ -22,6 +25,9 @@ export function useUploadQueueState() {
 export function useUploadQueueActions() {
   const enqueueUploads = useSetAtom(enqueueUploadsAtom);
   const replaceQueuedUploads = useSetAtom(replaceQueuedUploadsAtom);
+  const setUploadPreviewGenerating = useSetAtom(setUploadPreviewGeneratingAtom);
+  const setUploadPreviewReady = useSetAtom(setUploadPreviewReadyAtom);
+  const setUploadPreviewFailed = useSetAtom(setUploadPreviewFailedAtom);
   const setUploadProgress = useSetAtom(setUploadProgressAtom);
   const appendUploadEvent = useSetAtom(appendUploadEventAtom);
   const setPartialExtraction = useSetAtom(setPartialExtractionAtom);
@@ -32,6 +38,9 @@ export function useUploadQueueActions() {
     () => ({
       enqueueUploads,
       replaceQueuedUploads,
+      setUploadPreviewGenerating,
+      setUploadPreviewReady,
+      setUploadPreviewFailed,
       setUploadProgress,
       appendUploadEvent,
       setPartialExtraction,
@@ -44,6 +53,9 @@ export function useUploadQueueActions() {
       markUploadCompleted,
       markUploadFailed,
       replaceQueuedUploads,
+      setUploadPreviewFailed,
+      setUploadPreviewGenerating,
+      setUploadPreviewReady,
       setPartialExtraction,
       setUploadProgress
     ]

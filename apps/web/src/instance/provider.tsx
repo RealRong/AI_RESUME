@@ -6,6 +6,7 @@ import {
   createUploadsRequest,
   createUploadEventSource
 } from "./upload/api";
+import { createPdfThumbnail } from "./upload/preview";
 import {
   fetchCandidateDetailRequest,
   fetchCandidateListRequest
@@ -13,7 +14,7 @@ import {
 import { fetchJobsRequest } from "./job/api";
 import { createJobRequest, updateJobRequest } from "./job/api";
 import { createMatchingRequest } from "./matching/api";
-import { useUploadQueueActions } from "@/domains/upload/hooks";
+import { useUploadQueueActions, useUploadQueueState } from "@/domains/upload/hooks";
 import { useCandidateListActions, useCandidateListState } from "@/domains/candidate/hooks";
 import { useJobActions } from "@/domains/job/hooks";
 import { useMatchingWorkspaceActions } from "@/domains/matching/hooks";
@@ -22,47 +23,128 @@ const InstanceContext = createContext<AppInstance | null>(null);
 
 export function InstanceProvider({ children }: { children: React.ReactNode }) {
   const uploadActions = useUploadQueueActions();
+  const uploadState = useUploadQueueState();
   const candidateState = useCandidateListState();
   const candidateActions = useCandidateListActions();
   const jobActions = useJobActions();
   const matchingActions = useMatchingWorkspaceActions();
   const uploadEventSourcesRef = useRef(new Map<string, EventSource>());
+  const uploadQueueRef = useRef(uploadState.queue);
   const candidateQueryRef = useRef(candidateState.query);
 
   useEffect(() => {
     candidateQueryRef.current = candidateState.query;
   }, [candidateState.query]);
 
+  useEffect(() => {
+    uploadQueueRef.current = uploadState.queue;
+  }, [uploadState.queue]);
+
+  useEffect(() => {
+    return () => {
+      for (const source of uploadEventSourcesRef.current.values()) {
+        source.close();
+      }
+
+      for (const item of uploadQueueRef.current) {
+        if (item.preview?.fileObjectUrl) {
+          URL.revokeObjectURL(item.preview.fileObjectUrl);
+        }
+
+        if (item.preview?.thumbnailUrl) {
+          URL.revokeObjectURL(item.preview.thumbnailUrl);
+        }
+      }
+    };
+  }, []);
+
   const instance = useMemo<AppInstance>(() => {
     return {
       upload: {
         async createUploads(files) {
-          const queued = files.map((file) => ({
-            uploadId: `local-${crypto.randomUUID()}`,
-            candidateId: "",
-            fileName: file.name,
-            progress: 0,
-            status: "uploading" as const
-          }));
+          const queued = files.map((file) => {
+            const clientId = crypto.randomUUID();
 
-          uploadActions.enqueueUploads(queued);
-          const localUploadIds = queued.map((item) => item.uploadId);
-
-          const response = await createUploadsRequest(files);
-          const uploads = response.data.uploads;
-
-          uploadActions.replaceQueuedUploads({
-            localUploadIds,
-            items: uploads.map((item) => ({
-              uploadId: item.uploadId,
-              candidateId: item.candidateId,
-              fileName: item.fileName,
+            return {
+              clientId,
+              uploadId: `local-${clientId}`,
+              candidateId: "",
+              fileName: file.name,
+              fileSize: file.size,
               progress: 0,
               status: "uploading" as const
-            }))
+            };
           });
 
-          return uploads;
+          uploadActions.enqueueUploads(queued);
+
+          for (const [index, file] of files.entries()) {
+            const item = queued[index];
+            if (!item) {
+              continue;
+            }
+            const fileObjectUrl = URL.createObjectURL(file);
+
+            uploadActions.setUploadPreviewGenerating({
+              clientId: item.clientId,
+              fileObjectUrl
+            });
+
+            void createPdfThumbnail(file)
+              .then((thumbnail) => {
+                uploadActions.setUploadPreviewReady({
+                  clientId: item.clientId,
+                  thumbnailUrl: thumbnail.thumbnailUrl,
+                  pageCount: thumbnail.pageCount
+                });
+              })
+              .catch((error: unknown) => {
+                uploadActions.setUploadPreviewFailed({
+                  clientId: item.clientId,
+                  error:
+                    error instanceof Error ? error.message : "PDF 缩略图生成失败。"
+                });
+              });
+          }
+
+          try {
+            const response = await createUploadsRequest(files);
+            const uploads = response.data.uploads;
+
+            uploadActions.replaceQueuedUploads({
+              localClientIds: queued.map((item) => item.clientId),
+              items: uploads.map((item, index) => {
+                const nextItem = {
+                  clientId: queued[index]?.clientId ?? crypto.randomUUID(),
+                  uploadId: item.uploadId,
+                  candidateId: item.candidateId,
+                  fileName: item.fileName,
+                  progress: 0,
+                  status: "uploading" as const
+                };
+
+                if (queued[index]?.fileSize) {
+                  return {
+                    ...nextItem,
+                    fileSize: queued[index].fileSize
+                  };
+                }
+
+                return nextItem;
+              })
+            });
+
+            return uploads;
+          } catch (error) {
+            for (const item of queued) {
+              uploadActions.markUploadFailed({
+                uploadId: item.uploadId,
+                error: error instanceof Error ? error.message : "上传请求失败。"
+              });
+            }
+
+            throw error;
+          }
         },
         subscribeUploadEvents(uploadId) {
           if (uploadEventSourcesRef.current.has(uploadId)) {
@@ -133,6 +215,21 @@ export function InstanceProvider({ children }: { children: React.ReactNode }) {
           if (source) {
             source.close();
             uploadEventSourcesRef.current.delete(uploadId);
+          }
+        },
+        disposeUploadResources(clientId) {
+          const item = uploadQueueRef.current.find((currentItem) => currentItem.clientId === clientId);
+
+          if (!item?.preview) {
+            return;
+          }
+
+          if (item.preview.fileObjectUrl) {
+            URL.revokeObjectURL(item.preview.fileObjectUrl);
+          }
+
+          if (item.preview.thumbnailUrl) {
+            URL.revokeObjectURL(item.preview.thumbnailUrl);
           }
         }
       },

@@ -1,5 +1,3 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
 export function StatCard({
   label,
   value,
@@ -10,14 +8,12 @@ export function StatCard({
   detail?: string;
 }) {
   return (
-    <Card className="shadow-none">
-      <CardHeader className="pb-3">
-        <p className="text-xs font-medium uppercase tracking-[0.14em] text-fg-muted">{label}</p>
-      </CardHeader>
-      <CardContent className="space-y-1">
-        <CardTitle className="text-2xl">{value}</CardTitle>
+    <div className="rounded-xl bg-muted/30 px-5 py-4">
+      <p className="text-xs font-medium uppercase tracking-[0.14em] text-fg-muted">{label}</p>
+      <div className="mt-3 space-y-1">
+        <p className="text-2xl font-semibold text-foreground">{value}</p>
         {detail ? <p className="text-sm text-fg-muted">{detail}</p> : null}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

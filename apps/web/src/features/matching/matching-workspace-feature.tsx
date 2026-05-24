@@ -35,13 +35,13 @@ export function MatchingWorkspaceFeature() {
   return (
     <PageShell
       title="岗位匹配分析"
-      description="匹配配置和结果缓存都由 matching-domain 管理，请求统一通过 matching instance 发起。"
+      description="选择岗位与候选人，查看匹配得分和评估摘要。"
       actions={
         <Button
           onClick={() => void runMatching()}
           disabled={!workspace.jobId || workspace.candidateIds.length === 0 || results.loading}
         >
-          开始评分
+          开始分析
         </Button>
       }
     >
@@ -50,7 +50,7 @@ export function MatchingWorkspaceFeature() {
           <Card>
             <CardHeader>
               <CardTitle>选择 JD</CardTitle>
-              <CardDescription>只通过 matching-domain 记录当前 jobId。</CardDescription>
+              <CardDescription>先确定本次分析对应的岗位。</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {jobList.items.length === 0 ? (
@@ -76,7 +76,7 @@ export function MatchingWorkspaceFeature() {
           <Card>
             <CardHeader>
               <CardTitle>选择候选人</CardTitle>
-              <CardDescription>最多选择 3 位。页面不直接维护共享选择状态。</CardDescription>
+              <CardDescription>最多选择 3 位候选人进行对比。</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {candidateRemote.items.length === 0 ? (
@@ -109,21 +109,21 @@ export function MatchingWorkspaceFeature() {
         <Card>
           <CardHeader>
             <CardTitle>评分结果</CardTitle>
-            <CardDescription>当前后端返回结构化评分摘要，这里先用极简卡片代替复杂图表。</CardDescription>
+            <CardDescription>展示匹配得分及各维度结果。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {results.error ? (
               <EmptyState title="评分失败" description={results.error} />
             ) : results.loading ? (
-              <p className="text-sm text-fg-muted">正在生成评分结果...</p>
+              <p className="text-sm text-fg-muted">正在生成匹配结果...</p>
             ) : results.items.length === 0 ? (
-              <EmptyState title="暂无评分结果" description="选择 JD 和候选人后点击“开始评分”。" />
+              <EmptyState title="暂无评分结果" description="选择岗位和候选人后，点击“开始分析”。" />
             ) : (
               results.items.map((result) => (
                 <div key={result.matchingId} className="space-y-4 rounded-lg border border-border p-5">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm text-fg-muted">Candidate ID</p>
+                      <p className="text-sm text-fg-muted">候选人编号</p>
                       <p className="font-medium">{result.candidateId}</p>
                     </div>
                     <div className="text-right">

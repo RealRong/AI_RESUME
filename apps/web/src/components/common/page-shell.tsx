@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 export function PageShell({
   title,
   description,
-  eyebrow = "Recruiting Console",
+  eyebrow = "招聘工作台",
   actions,
   aside,
   children,
@@ -19,7 +19,7 @@ export function PageShell({
 }) {
   return (
     <div className={cn("flex min-w-0 flex-col gap-8", className)}>
-      <header className="grid gap-6 border-b border-border pb-6 lg:grid-cols-[1fr_auto] lg:items-end">
+      <header className="grid gap-5 border-b border-border pb-5 lg:grid-cols-[1fr_auto] lg:items-end">
         <div className="space-y-3">
           <p className="app-section-title">{eyebrow}</p>
           <div className="space-y-2">

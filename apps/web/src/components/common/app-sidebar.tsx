@@ -14,26 +14,26 @@ const navItems: Array<{
 }> = [
   {
     href: "/upload",
-    label: "Upload",
-    description: "批量上传与解析",
+    label: "上传简历",
+    description: "批量上传与处理进度",
     icon: Upload
   },
   {
     href: "/dashboard/candidates",
-    label: "Candidates",
-    description: "候选人列表与详情",
+    label: "候选人",
+    description: "列表、详情与画像",
     icon: LayoutGrid
   },
   {
     href: "/dashboard/jobs",
-    label: "Jobs",
-    description: "岗位 JD 管理",
+    label: "岗位管理",
+    description: "岗位信息与要求维护",
     icon: BriefcaseBusiness
   },
   {
     href: "/dashboard/matching",
-    label: "Matching",
-    description: "匹配分析与评分",
+    label: "匹配分析",
+    description: "候选人与岗位评估",
     icon: SearchCheck
   }
 ];
@@ -49,49 +49,49 @@ export function AppSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden lg:block">
-      <div className="sticky top-8 rounded-2xl border border-border bg-card p-4 shadow-panel">
-        <div className="border-b border-border px-3 pb-4">
+    <aside className="app-sidebar-shell">
+      <div className="flex items-center border-b border-sidebar-border px-6 py-6">
+        <div className="space-y-2">
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-fg-muted">
-            AI Resume Platform
+            智能简历平台
           </p>
-          <p className="mt-3 text-lg font-semibold text-foreground">Workspace</p>
-          <p className="mt-1 text-sm leading-6 text-fg-muted">
-            所有业务页都从同一导航骨架进入。
-          </p>
+          <div>
+            <p className="text-lg font-semibold text-foreground">工作台</p>
+            <p className="mt-1 text-sm text-fg-muted">候选人、岗位与匹配分析</p>
+          </div>
         </div>
-        <nav className="mt-4 space-y-2">
-          {navItems.map((item) => {
-            const active = isActive(pathname, item.href);
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
+      </div>
+      <nav className="app-sidebar-nav">
+        {navItems.map((item) => {
+          const active = isActive(pathname, item.href);
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "app-sidebar-item",
+                active
+                  ? "border-sidebar-border bg-muted text-foreground"
+                  : "text-fg-muted hover:bg-muted hover:text-foreground"
+              )}
+            >
+              <div
                 className={cn(
-                  "flex items-start gap-3 rounded-xl border px-3 py-3 transition",
-                  active
-                    ? "border-primary bg-muted text-foreground"
-                    : "border-transparent text-fg-muted hover:border-border hover:bg-muted/50 hover:text-foreground"
+                  "mt-0.5 rounded-md border p-2",
+                  active ? "border-sidebar-border bg-background" : "border-border bg-background"
                 )}
               >
-                <div
-                  className={cn(
-                    "mt-0.5 rounded-md border p-2",
-                    active ? "border-primary bg-background" : "border-border bg-background"
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">{item.label}</p>
-                  <p className="mt-1 text-xs leading-5 text-fg-muted">{item.description}</p>
-                </div>
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
+                <Icon className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium">{item.label}</p>
+                <p className="mt-1 text-xs leading-5 text-fg-muted">{item.description}</p>
+              </div>
+            </Link>
+          );
+        })}
+      </nav>
     </aside>
   );
 }
