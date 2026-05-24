@@ -1,3 +1,3 @@
-import { matchingRequestSchema } from "@ai-resume/shared-types";
+import { matchingRequestSchema } from "./shared.schema";
 
 export const createMatchingSchema = matchingRequestSchema;

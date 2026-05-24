@@ -1,5 +1,5 @@
-import { candidateStatusUpdateSchema } from "@ai-resume/shared-types";
 import { z } from "zod";
+import { candidateStatusUpdateSchema } from "./shared.schema";
 
 export const updateCandidateStatusSchema = candidateStatusUpdateSchema;
 

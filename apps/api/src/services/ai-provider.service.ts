@@ -1,4 +1,5 @@
-import { aiProviderConfigSchema, type AiProviderConfig } from "@ai-resume/shared-types";
+import type { AiProviderConfig } from "@ai-resume/shared-types";
+import { aiProviderConfigSchema } from "../schemas/shared.schema";
 
 export function parseAiProviderConfig(input: {
   baseUrl?: string | null | undefined;
