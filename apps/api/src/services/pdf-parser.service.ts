@@ -1,12 +1,28 @@
-import { PDFParse } from "pdf-parse";
+import PDFParser from "pdf2json";
 
 export async function parsePdfBuffer(fileBuffer: Buffer) {
-  const parser = new PDFParse({ data: fileBuffer });
-  const textResult = await parser.getText();
-  await parser.destroy();
+  const parser = new PDFParser();
 
-  return {
-    text: textResult.text ?? "",
-    pageCount: textResult.total ?? 0
-  };
+  return await new Promise<{ text: string; pageCount: number }>((resolve, reject) => {
+    parser.on("pdfParser_dataError", (error: Error | { parserError: Error }) => {
+      const parserError = error instanceof Error ? error : error.parserError;
+      const reason =
+        parserError instanceof Error
+          ? parserError.message
+          : "Unknown PDF parsing error.";
+
+      reject(new Error(`Failed to parse PDF: ${reason}`));
+    });
+
+    parser.on("pdfParser_dataReady", (pdfData: { Pages?: unknown[] } | null | undefined) => {
+      const text = parser.getRawTextContent().trim();
+
+      resolve({
+        text,
+        pageCount: pdfData?.Pages?.length ?? 0
+      });
+    });
+
+    parser.parseBuffer(fileBuffer);
+  });
 }
