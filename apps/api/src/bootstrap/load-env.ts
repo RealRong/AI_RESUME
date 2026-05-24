@@ -1,9 +1,8 @@
 import { config } from "dotenv";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
-const currentDir = path.dirname(fileURLToPath(import.meta.url));
+const currentDir = __dirname;
 const apiRoot = path.resolve(currentDir, "..", "..");
 const workspaceRoot = path.resolve(apiRoot, "..", "..");
 
