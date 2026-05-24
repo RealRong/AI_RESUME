@@ -15,6 +15,13 @@ type MatchingRow = {
   evidence_json: string[];
 };
 
+type CandidateMatchingRow = MatchingRow & {
+  created_at: string;
+  jobs?: {
+    title: string | null;
+  } | null;
+};
+
 function mapMatching(row: MatchingRow): MatchingResult {
   return {
     matchingId: row.id,
@@ -87,4 +94,24 @@ export async function getMatchingById(matchingId: string) {
   }
 
   return data ? mapMatching(data as MatchingRow) : null;
+}
+
+export async function listCandidateMatchings(candidateId: string, limit = 6) {
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await (supabase as any)
+    .from("candidate_matchings")
+    .select("*, jobs(title)")
+    .eq("candidate_id", candidateId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw new Error(`Failed to list candidate matchings: ${error.message}`);
+  }
+
+  return ((data as CandidateMatchingRow[] | null) ?? []).map((row) => ({
+    ...mapMatching(row),
+    jobTitle: row.jobs?.title ?? null,
+    createdAt: row.created_at
+  }));
 }

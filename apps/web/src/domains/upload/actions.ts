@@ -2,6 +2,13 @@ import { atom } from "jotai";
 import { uploadDomainStateAtom } from "./atoms";
 import type { UploadQueueItem } from "./types";
 
+type UploadPartialExtraction = NonNullable<UploadQueueItem["partialExtraction"]>;
+type UploadBasicPartial = Exclude<UploadPartialExtraction["basic"], undefined>;
+type UploadEducationPartial = Exclude<UploadPartialExtraction["education"], undefined>;
+type UploadWorkExperiencesPartial = Exclude<UploadPartialExtraction["workExperiences"], undefined>;
+type UploadSkillsPartial = Exclude<UploadPartialExtraction["skills"], undefined>;
+type UploadProjectsPartial = Exclude<UploadPartialExtraction["projects"], undefined>;
+
 export const enqueueUploadsAtom = atom(null, (_get, set, items: UploadQueueItem[]) => {
   set(uploadDomainStateAtom, (prev) => ({
     ...prev,
@@ -197,18 +204,43 @@ export const appendUploadEventAtom = atom(
 
 export const setPartialExtractionAtom = atom(
   null,
-  (_get, set, payload: { uploadId: string; basic: Record<string, unknown> }) => {
+  (
+    _get,
+    set,
+    payload:
+      | { uploadId: string; stage: "basic"; data: UploadBasicPartial }
+      | { uploadId: string; stage: "education"; data: UploadEducationPartial }
+      | { uploadId: string; stage: "workExperiences"; data: UploadWorkExperiencesPartial }
+      | { uploadId: string; stage: "skills"; data: UploadSkillsPartial }
+      | { uploadId: string; stage: "projects"; data: UploadProjectsPartial }
+  ) => {
     set(uploadDomainStateAtom, (prev) => ({
       ...prev,
       queue: prev.queue.map((item) =>
         item.uploadId === payload.uploadId
-          ? {
-              ...item,
-              partialExtraction: {
-                ...item.partialExtraction,
-                basic: payload.basic
+          ? (() => {
+              const nextPartialExtraction: NonNullable<UploadQueueItem["partialExtraction"]> = {
+                ...(item.partialExtraction ?? {}),
+                stage: payload.stage
+              };
+
+              if (payload.stage === "basic") {
+                nextPartialExtraction.basic = payload.data;
+              } else if (payload.stage === "education") {
+                nextPartialExtraction.education = payload.data;
+              } else if (payload.stage === "workExperiences") {
+                nextPartialExtraction.workExperiences = payload.data;
+              } else if (payload.stage === "skills") {
+                nextPartialExtraction.skills = payload.data;
+              } else if (payload.stage === "projects") {
+                nextPartialExtraction.projects = payload.data;
               }
-            }
+
+              return {
+                ...item,
+                partialExtraction: nextPartialExtraction
+              };
+            })()
           : item
       )
     }));
@@ -235,6 +267,43 @@ export const markUploadCompletedAtom = atom(
 
               return nextItem;
             })()
+          : item
+      )
+    }));
+  }
+);
+
+export const hydrateUploadExtractionSnapshotAtom = atom(
+  null,
+  (
+    _get,
+    set,
+    payload: {
+      uploadId: string;
+      candidateId: string;
+      basic: UploadBasicPartial;
+      education: UploadEducationPartial;
+      workExperiences: UploadWorkExperiencesPartial;
+      skills: UploadSkillsPartial;
+      projects: UploadProjectsPartial;
+    }
+  ) => {
+    set(uploadDomainStateAtom, (prev) => ({
+      ...prev,
+      queue: prev.queue.map((item) =>
+        item.uploadId === payload.uploadId
+          ? {
+              ...item,
+              candidateId: payload.candidateId,
+              partialExtraction: {
+                stage: "projects",
+                basic: payload.basic,
+                education: payload.education,
+                workExperiences: payload.workExperiences,
+                skills: payload.skills,
+                projects: payload.projects
+              }
+            }
           : item
       )
     }));

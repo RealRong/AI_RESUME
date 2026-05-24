@@ -73,3 +73,91 @@ export async function createAiJsonCompletion<T>(params: {
 
   return JSON.parse(content) as T;
 }
+
+export async function createAiTextStream(params: {
+  config: AiProviderConfig;
+  systemPrompt: string;
+  userPrompt: string;
+  onText: (text: string) => void | Promise<void>;
+}) {
+  const response = await fetch(`${params.config.baseUrl.replace(/\/$/, "")}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${params.config.apiKey}`
+    },
+    body: JSON.stringify({
+      model: params.config.model,
+      temperature: 0,
+      stream: true,
+      messages: [
+        {
+          role: "system",
+          content: params.systemPrompt
+        },
+        {
+          role: "user",
+          content: params.userPrompt
+        }
+      ]
+    })
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`AI request failed: ${response.status} ${text}`.slice(0, 500));
+  }
+
+  if (!response.body) {
+    throw new Error("AI response body is empty.");
+  }
+
+  const decoder = new TextDecoder();
+  const reader = response.body.getReader();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+
+    if (done) {
+      break;
+    }
+
+    buffer += decoder.decode(value, { stream: true });
+
+    while (true) {
+      const lineBreakIndex = buffer.indexOf("\n");
+
+      if (lineBreakIndex === -1) {
+        break;
+      }
+
+      const line = buffer.slice(0, lineBreakIndex).trim();
+      buffer = buffer.slice(lineBreakIndex + 1);
+
+      if (!line.startsWith("data:")) {
+        continue;
+      }
+
+      const payload = line.slice(5).trim();
+
+      if (!payload || payload === "[DONE]") {
+        continue;
+      }
+
+      const parsed = JSON.parse(payload) as {
+        choices?: Array<{
+          delta?: {
+            content?: string;
+          };
+        }>;
+      };
+
+      const content = parsed.choices?.[0]?.delta?.content;
+
+      if (content) {
+        await params.onText(content);
+      }
+    }
+  }
+}

@@ -23,7 +23,36 @@ export type UploadQueueItem = {
     payload: Record<string, unknown>;
   }>;
   partialExtraction?: {
-    basic?: Record<string, unknown>;
+    stage?: "basic" | "education" | "workExperiences" | "skills" | "projects";
+    basic?: {
+      name?: string | null;
+      phone?: string | null;
+      email?: string | null;
+      city?: string | null;
+    };
+    education?: Array<{
+      school: string;
+      major?: string | null;
+      degree?: string | null;
+      graduationDate?: string | null;
+    }>;
+    workExperiences?: Array<{
+      companyName: string;
+      title?: string | null;
+      startDate?: string | null;
+      endDate?: string | null;
+      summary?: string | null;
+    }>;
+    skills?: Array<{
+      name: string;
+      type: string;
+    }>;
+    projects?: Array<{
+      projectName: string;
+      techStack?: string[];
+      roleSummary?: string | null;
+      highlights?: string[];
+    }>;
   };
 };
 

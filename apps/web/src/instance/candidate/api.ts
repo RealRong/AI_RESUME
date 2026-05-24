@@ -1,5 +1,6 @@
 import type {
   ApiResponse,
+  CandidateStatus,
   CandidateDetail,
   CandidateListItem
 } from "@ai-resume/shared-types";
@@ -27,4 +28,51 @@ export function fetchCandidateListRequest(input?: CandidateListQueryInput) {
 
 export function fetchCandidateDetailRequest(candidateId: string) {
   return apiRequest<ApiResponse<CandidateDetail>>(`/api/candidates/${candidateId}`);
+}
+
+export function updateCandidateProfileRequest(
+  candidateId: string,
+  input: Partial<{
+    basic: {
+      name?: string | null;
+      phone?: string | null;
+      email?: string | null;
+      city?: string | null;
+    };
+    skills: Array<{ name: string; type: string }>;
+    education: Array<{
+      school?: string;
+      major?: string | null;
+      degree?: string | null;
+      graduationDate?: string | null;
+    }>;
+    workExperiences: Array<{
+      companyName?: string;
+      title?: string | null;
+      startDate?: string | null;
+      endDate?: string | null;
+      summary?: string | null;
+    }>;
+    projects: Array<{
+      projectName?: string;
+      techStack?: string[];
+      roleSummary?: string | null;
+      highlights?: string[];
+    }>;
+  }>
+) {
+  return apiRequest<ApiResponse<{ id: string }>>(`/api/candidates/${candidateId}`, {
+    method: "PATCH",
+    body: JSON.stringify(input)
+  });
+}
+
+export function updateCandidateStatusRequest(candidateId: string, status: CandidateStatus) {
+  return apiRequest<ApiResponse<{ id: string; status: CandidateStatus }>>(
+    `/api/candidates/${candidateId}/status`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ status })
+    }
+  );
 }

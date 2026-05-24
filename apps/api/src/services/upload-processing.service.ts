@@ -7,7 +7,8 @@ import {
 } from "../repositories/uploads.repository";
 import {
   createCandidateDraft,
-  updateCandidateExtraction
+  updateCandidateExtraction,
+  updateCandidateProfile
 } from "../repositories/candidates.repository";
 import { uploadResumePdf } from "../repositories/storage.repository";
 import { cleanResumeText } from "./resume-cleaner.service";
@@ -16,6 +17,7 @@ import {
   extractResumeBasicsWithAi
 } from "./resume-extraction.service";
 import { parsePdfBuffer } from "./pdf-parser.service";
+import { extractStructuredResumeWithAi } from "./resume-structured-extraction.service";
 
 type AcceptedUpload = {
   uploadId: string;
@@ -113,13 +115,8 @@ export async function processUpload(
       uploadId: accepted.uploadId,
       progress: 60
     });
+    let basics = extractResumeBasics(cleanedText);
 
-    const basics = aiConfig?.apiKey
-      ? await extractResumeBasicsWithAi({
-          cleanedText,
-          config: aiConfig
-        }).catch(() => extractResumeBasics(cleanedText))
-      : extractResumeBasics(cleanedText);
     await updateCandidateExtraction({
       candidateId: accepted.candidateId,
       basic: basics,
@@ -128,10 +125,78 @@ export async function processUpload(
       extractionStatus: "running"
     });
 
-    await emitEvent(accepted.uploadId, "extract.partial", {
-      uploadId: accepted.uploadId,
-      basic: basics
-    });
+    if (aiConfig?.apiKey) {
+      const structured = await extractStructuredResumeWithAi({
+        cleanedText,
+        config: aiConfig,
+        onSection: async ({ stage, data }) => {
+          const progressMap = {
+            basic: 68,
+            education: 76,
+            workExperiences: 84,
+            skills: 92,
+            projects: 96
+          } as const;
+
+          await emitEvent(accepted.uploadId, "extract.section", {
+            uploadId: accepted.uploadId,
+            stage,
+            data,
+            progress: progressMap[stage]
+          });
+
+          if (stage === "basic") {
+            basics = data as typeof basics;
+
+            await updateCandidateExtraction({
+              candidateId: accepted.candidateId,
+              basic: basics,
+              rawText: parsed.text,
+              cleanedText,
+              extractionStatus: "running"
+            });
+
+            await emitEvent(accepted.uploadId, "extract.partial", {
+              uploadId: accepted.uploadId,
+              basic: basics
+            });
+          }
+        }
+      }).catch(async () => {
+        const fallbackBasics = await extractResumeBasicsWithAi({
+          cleanedText,
+          config: aiConfig
+        }).catch(() => extractResumeBasics(cleanedText));
+
+        basics = fallbackBasics;
+
+        await emitEvent(accepted.uploadId, "extract.partial", {
+          uploadId: accepted.uploadId,
+          basic: fallbackBasics
+        });
+
+        return {
+          basic: fallbackBasics,
+          education: [],
+          workExperiences: [],
+          skills: [],
+          projects: []
+        };
+      });
+
+      await updateCandidateProfile(accepted.candidateId, {
+        basic: structured.basic,
+        education: structured.education,
+        workExperiences: structured.workExperiences,
+        skills: structured.skills,
+        projects: structured.projects
+      });
+    } else {
+      await emitEvent(accepted.uploadId, "extract.partial", {
+        uploadId: accepted.uploadId,
+        basic: basics
+      });
+    }
 
     await updateCandidateExtraction({
       candidateId: accepted.candidateId,

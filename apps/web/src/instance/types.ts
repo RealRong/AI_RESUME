@@ -1,5 +1,6 @@
 import type {
   AiProviderConfig,
+  CandidateStatus,
   CandidateDetail,
   CandidateListItem,
   Job,
@@ -33,6 +34,38 @@ export type AppInstance = {
   candidate: {
     fetchList(input?: CandidateListQueryInput): Promise<CandidateListItem[]>;
     fetchDetail(candidateId: string): Promise<CandidateDetail>;
+    updateProfile(
+      candidateId: string,
+      input: Partial<{
+        basic: {
+          name?: string | null;
+          phone?: string | null;
+          email?: string | null;
+          city?: string | null;
+        };
+        skills: Array<{ name: string; type: string }>;
+        education: Array<{
+          school?: string;
+          major?: string | null;
+          degree?: string | null;
+          graduationDate?: string | null;
+        }>;
+        workExperiences: Array<{
+          companyName?: string;
+          title?: string | null;
+          startDate?: string | null;
+          endDate?: string | null;
+          summary?: string | null;
+        }>;
+        projects: Array<{
+          projectName?: string;
+          techStack?: string[];
+          roleSummary?: string | null;
+          highlights?: string[];
+        }>;
+      }>
+    ): Promise<void>;
+    updateStatus(candidateId: string, status: CandidateStatus): Promise<void>;
   };
   job: {
     fetchList(): Promise<Job[]>;
@@ -42,6 +75,10 @@ export type AppInstance = {
   matching: {
     createMatching(input: {
       jobId: string;
+      candidateIds: string[];
+    }): Promise<MatchingResult[]>;
+    compareJobs(input: {
+      jobIds: string[];
       candidateIds: string[];
     }): Promise<MatchingResult[]>;
   };

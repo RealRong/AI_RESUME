@@ -98,6 +98,160 @@ function UploadBasicInfo({ item }: { item: UploadQueueItem }) {
   return <p className="text-sm text-fg-muted">基础信息将在处理完成后显示</p>;
 }
 
+function ExtractionSection({
+  title,
+  ready,
+  loading,
+  children
+}: {
+  title: string;
+  ready: boolean;
+  loading: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <h4 className="text-sm font-medium text-foreground">{title}</h4>
+        <Badge variant="outline">{ready ? "已提取" : loading ? "提取中" : "待提取"}</Badge>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function UploadStructuredExtraction({ item }: { item: UploadQueueItem }) {
+  const partial = item.partialExtraction;
+  const loading = item.status === "parsing" || item.status === "extracting" || item.status === "uploading";
+
+  return (
+    <div className="grid gap-3">
+      <ExtractionSection title="基本信息" ready={Boolean(partial?.basic)} loading={loading}>
+        <UploadBasicInfo item={item} />
+      </ExtractionSection>
+
+      <ExtractionSection
+        title="教育背景"
+        ready={Boolean(partial?.education && partial.education.length > 0)}
+        loading={loading}
+      >
+        {partial?.education?.length ? (
+          <div className="space-y-3 text-sm">
+            {partial.education.map((education, index) => (
+              <div key={`${education.school}-${index}`}>
+                <p className="font-medium text-foreground">{education.school}</p>
+                <p className="mt-1 text-fg-muted">
+                  {[education.major, education.degree, education.graduationDate].filter(Boolean).join(" / ") || "信息待补充"}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : loading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+        ) : (
+          <p className="text-sm text-fg-muted">暂无教育背景</p>
+        )}
+      </ExtractionSection>
+
+      <ExtractionSection
+        title="工作经历"
+        ready={Boolean(partial?.workExperiences && partial.workExperiences.length > 0)}
+        loading={loading}
+      >
+        {partial?.workExperiences?.length ? (
+          <div className="space-y-3 text-sm">
+            {partial.workExperiences.map((work, index) => (
+              <div key={`${work.companyName}-${index}`}>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-medium text-foreground">{work.companyName}</p>
+                  {work.title ? <span className="text-fg-muted">/ {work.title}</span> : null}
+                </div>
+                {(work.startDate || work.endDate) ? (
+                  <p className="mt-1 text-fg-muted">{[work.startDate, work.endDate].filter(Boolean).join(" - ")}</p>
+                ) : null}
+                {work.summary ? <p className="mt-2 leading-6 text-fg-muted">{work.summary}</p> : null}
+              </div>
+            ))}
+          </div>
+        ) : loading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-4 w-5/6" />
+          </div>
+        ) : (
+          <p className="text-sm text-fg-muted">暂无工作经历</p>
+        )}
+      </ExtractionSection>
+
+      <ExtractionSection
+        title="技能标签"
+        ready={Boolean(partial?.skills && partial.skills.length > 0)}
+        loading={loading}
+      >
+        {partial?.skills?.length ? (
+          <div className="flex flex-wrap gap-2">
+            {partial.skills.map((skill) => (
+              <Badge key={`${skill.type}-${skill.name}`} variant="secondary" className="border-transparent">
+                {skill.name}
+              </Badge>
+            ))}
+          </div>
+        ) : loading ? (
+          <div className="flex flex-wrap gap-2">
+            <Skeleton className="h-6 w-16 rounded-full" />
+            <Skeleton className="h-6 w-20 rounded-full" />
+            <Skeleton className="h-6 w-14 rounded-full" />
+          </div>
+        ) : (
+          <p className="text-sm text-fg-muted">暂无技能标签</p>
+        )}
+      </ExtractionSection>
+
+      <ExtractionSection
+        title="项目经历"
+        ready={Boolean(partial?.projects && partial.projects.length > 0)}
+        loading={loading}
+      >
+        {partial?.projects?.length ? (
+          <div className="space-y-3 text-sm">
+            {partial.projects.map((project, index) => (
+              <div key={`${project.projectName}-${index}`}>
+                <p className="font-medium text-foreground">{project.projectName}</p>
+                {project.techStack?.length ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {project.techStack.map((tech) => (
+                      <Badge key={tech} variant="outline">{tech}</Badge>
+                    ))}
+                  </div>
+                ) : null}
+                {project.roleSummary ? <p className="mt-2 leading-6 text-fg-muted">{project.roleSummary}</p> : null}
+                {project.highlights?.length ? (
+                  <ul className="mt-2 space-y-1 text-fg-muted">
+                    {project.highlights.map((highlight, index) => (
+                      <li key={`${highlight}-${index}`}>{highlight}</li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        ) : loading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-4 w-5/6" />
+          </div>
+        ) : (
+          <p className="text-sm text-fg-muted">暂无项目经历</p>
+        )}
+      </ExtractionSection>
+    </div>
+  );
+}
+
 function UploadQueueRow({ item }: { item: UploadQueueItem }) {
   const progressLabel = item.status === "completed" ? 100 : item.progress;
   const recentEvent = item.events?.[item.events.length - 1];
@@ -139,9 +293,7 @@ function UploadQueueRow({ item }: { item: UploadQueueItem }) {
 
         {item.error ? <p className="text-sm text-destructive">{item.error}</p> : null}
 
-        <div className="rounded-lg bg-muted/50 p-4">
-          <UploadBasicInfo item={item} />
-        </div>
+        <UploadStructuredExtraction item={item} />
         {item.preview?.thumbnailError ? (
           <p className="text-xs leading-5 text-fg-muted">
             缩略图预览不可用：{item.preview.thumbnailError}
@@ -223,7 +375,7 @@ export function UploadWorkspace() {
   return (
     <PageShell
       title="上传中心"
-      description="批量上传 PDF 简历，实时查看首页缩略图、处理进度和基础信息。"
+      description="批量上传 PDF 简历，实时查看首页缩略图、处理进度和结构化提取结果。"
       actions={
         <>
           <Button variant="outline" onClick={dropzone.open}>
@@ -259,7 +411,7 @@ export function UploadWorkspace() {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="space-y-1">
                 <CardTitle>上传文件</CardTitle>
-                <CardDescription>拖拽或选择本地 PDF，进入队列后会立即生成首页缩略图。</CardDescription>
+                <CardDescription>拖拽或选择本地 PDF，进入队列后会立即生成首页缩略图，并逐步显示 AI 提取结果。</CardDescription>
               </div>
               <Badge variant="outline">支持批量上传</Badge>
             </div>
@@ -285,13 +437,13 @@ export function UploadWorkspace() {
                   {dropzone.isDragActive ? "松开即可开始上传" : "拖拽 PDF 到此处，或点击选择文件"}
                 </p>
                 <p className="text-sm leading-6 text-fg-muted">
-                  建议单次上传 5-10 份，每份不超过 10MB。系统会在上传过程中同步生成首页缩略图。
+                  建议单次上传 5-10 份，每份不超过 10MB。系统会在上传过程中同步生成首页缩略图，并按区块逐步展示提取结果。
                 </p>
               </div>
               <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-xs text-fg-muted">
                 <span className="rounded-full bg-background px-3 py-1">PDF</span>
                 <span className="rounded-full bg-background px-3 py-1">首页缩略图</span>
-                <span className="rounded-full bg-background px-3 py-1">基础信息提取</span>
+                <span className="rounded-full bg-background px-3 py-1">结构化提取</span>
               </div>
             </div>
 
@@ -320,21 +472,13 @@ export function UploadWorkspace() {
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            {orderedQueue.length === 0 ? (
-              <EmptyState
-                title="队列为空"
-                description="开始上传后，这里会出现每份简历的缩略图、进度和提取结果。"
-                inset
-              />
-            ) : (
+            {orderedQueue.length === 0 ? null : (
               <div className="divide-y divide-border">
                 {orderedQueue.map((item) => (
                   <UploadQueueRow key={item.clientId} item={item} />
                 ))}
               </div>
             )}
-          </CardContent>
         </Card>
       </section>
     </PageShell>

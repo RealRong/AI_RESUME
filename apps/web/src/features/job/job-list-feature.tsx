@@ -41,7 +41,7 @@ function formatDate(value: string) {
 function JobListSkeleton() {
   return (
     <section className="rounded-xl bg-muted/20">
-      <div className="border-b border-border px-5 py-4">
+      <div className="border-b border-border pb-4">
         <div className="space-y-2">
           <Skeleton className="h-6 w-24" />
           <Skeleton className="h-4 w-52" />
@@ -49,7 +49,7 @@ function JobListSkeleton() {
       </div>
       <div className="divide-y divide-border">
         {Array.from({ length: 5 }).map((_, index) => (
-          <div key={index} className="px-5 py-5">
+          <div key={index} className="py-5">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 flex-1 space-y-3">
                 <div className="space-y-2">
@@ -198,13 +198,13 @@ export function JobListFeature() {
           )
         ) : (
           <section className="rounded-xl bg-muted/20">
-            <div className="border-b border-border px-5 py-4">
+            <div className="border-b border-border pb-4">
               <h2 className="text-lg font-semibold text-foreground">岗位列表</h2>
               <p className="mt-1 text-sm text-fg-muted">在列表中快速浏览岗位重点，点击右侧按钮进入抽屉编辑。</p>
             </div>
             <div className="divide-y divide-border">
               {filteredJobs.map((job) => (
-                <article key={job.id} className="px-5 py-5 transition-colors hover:bg-muted/20">
+                <article key={job.id} className="py-5 transition-colors hover:bg-muted/20">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-3">
@@ -284,7 +284,7 @@ export function JobListFeature() {
               />
             </section>
 
-            <section className="space-y-4 rounded-xl bg-muted/20 px-4 py-4">
+            <section className="space-y-4">
               <div>
                 <h3 className="text-sm font-medium text-foreground">技能要求</h3>
                 <p className="mt-1 text-sm text-fg-muted">使用英文逗号分隔多个技能。</p>

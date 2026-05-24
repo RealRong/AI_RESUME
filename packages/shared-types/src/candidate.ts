@@ -1,3 +1,4 @@
+import type { MatchingResult } from "./matching";
 import { z } from "zod";
 
 export const candidateStatuses = [
@@ -23,8 +24,14 @@ export type CandidateListItem = {
   city: string | null;
   status: CandidateStatus;
   skills: string[];
+  schools: string[];
   latestOverallScore: number | null;
   uploadedAt: string;
+};
+
+export type CandidateMatchingSnapshot = MatchingResult & {
+  jobTitle: string | null;
+  createdAt: string;
 };
 
 export type CandidateDetail = {
@@ -59,5 +66,6 @@ export type CandidateDetail = {
     roleSummary: string | null;
     highlights: string[];
   }>;
+  matchings: CandidateMatchingSnapshot[];
   pdfPreviewUrl: string | null;
 };

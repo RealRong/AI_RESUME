@@ -8,6 +8,7 @@ import {
   markUploadCompletedAtom,
   markUploadFailedAtom,
   replaceQueuedUploadsAtom,
+  hydrateUploadExtractionSnapshotAtom,
   setUploadPreviewFailedAtom,
   setUploadPreviewGeneratingAtom,
   setUploadPreviewReadyAtom,
@@ -33,6 +34,7 @@ export function useUploadQueueActions() {
   const setPartialExtraction = useSetAtom(setPartialExtractionAtom);
   const markUploadCompleted = useSetAtom(markUploadCompletedAtom);
   const markUploadFailed = useSetAtom(markUploadFailedAtom);
+  const hydrateExtractionSnapshot = useSetAtom(hydrateUploadExtractionSnapshotAtom);
 
   return useMemo(
     () => ({
@@ -45,7 +47,8 @@ export function useUploadQueueActions() {
       appendUploadEvent,
       setPartialExtraction,
       markUploadCompleted,
-      markUploadFailed
+      markUploadFailed,
+      hydrateExtractionSnapshot
     }),
     [
       appendUploadEvent,
@@ -57,7 +60,8 @@ export function useUploadQueueActions() {
       setUploadPreviewGenerating,
       setUploadPreviewReady,
       setPartialExtraction,
-      setUploadProgress
+      setUploadProgress,
+      hydrateExtractionSnapshot
     ]
   );
 }

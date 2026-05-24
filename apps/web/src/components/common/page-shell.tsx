@@ -18,7 +18,7 @@ export function PageShell({
   className?: string;
 }) {
   return (
-    <div className={cn("flex min-w-0 flex-col gap-8", className)}>
+    <div className={cn("flex min-w-0 flex-col gap-6", className)}>
       <header className="grid gap-5 border-b border-border pb-5 lg:grid-cols-[1fr_auto] lg:items-end">
         <div className="space-y-3">
           <p className="app-section-title">{eyebrow}</p>

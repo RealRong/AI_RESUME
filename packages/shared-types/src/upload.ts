@@ -23,6 +23,7 @@ export const uploadEventTypes = [
   "pdf.parsed",
   "resume.cleaned",
   "extract.started",
+  "extract.section",
   "extract.partial",
   "extract.completed",
   "job.failed"

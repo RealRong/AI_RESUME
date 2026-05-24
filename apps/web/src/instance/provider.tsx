@@ -10,7 +10,9 @@ import {
 import { createPdfThumbnail } from "./upload/preview";
 import {
   fetchCandidateDetailRequest,
-  fetchCandidateListRequest
+  fetchCandidateListRequest,
+  updateCandidateProfileRequest,
+  updateCandidateStatusRequest
 } from "./candidate/api";
 import { fetchJobsRequest } from "./job/api";
 import { createJobRequest, updateJobRequest } from "./job/api";
@@ -20,9 +22,11 @@ import { useCandidateListActions, useCandidateListState } from "@/domains/candid
 import { useJobActions } from "@/domains/job/hooks";
 import { useMatchingWorkspaceActions } from "@/domains/matching/hooks";
 import { useSettingsActions, useSettingsState } from "@/domains/settings/hooks";
+import { useUiActions, useUiState } from "@/domains/ui/hooks";
 
 const InstanceContext = createContext<AppInstance | null>(null);
 const AI_SETTINGS_STORAGE_KEY = "ai.resume.settings";
+const THEME_STORAGE_KEY = "ai.resume.theme";
 
 export function InstanceProvider({ children }: { children: React.ReactNode }) {
   const uploadActions = useUploadQueueActions();
@@ -33,6 +37,8 @@ export function InstanceProvider({ children }: { children: React.ReactNode }) {
   const matchingActions = useMatchingWorkspaceActions();
   const settingsState = useSettingsState();
   const settingsActions = useSettingsActions();
+  const uiState = useUiState();
+  const uiActions = useUiActions();
   const uploadEventSourcesRef = useRef(new Map<string, EventSource>());
   const uploadQueueRef = useRef(uploadState.queue);
   const candidateQueryRef = useRef(candidateState.query);
@@ -75,6 +81,24 @@ export function InstanceProvider({ children }: { children: React.ReactNode }) {
       settingsActions.hydrateAi(null);
     }
   }, [settingsActions]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+    uiActions.setTheme(savedTheme === "dark" ? "dark" : "light");
+  }, [uiActions]);
+
+  useEffect(() => {
+    if (typeof document === "undefined" || typeof window === "undefined") {
+      return;
+    }
+
+    document.documentElement.classList.toggle("dark", uiState.theme === "dark");
+    window.localStorage.setItem(THEME_STORAGE_KEY, uiState.theme);
+  }, [uiState.theme]);
 
   useEffect(() => {
     return () => {
@@ -232,22 +256,116 @@ export function InstanceProvider({ children }: { children: React.ReactNode }) {
 
           source.addEventListener("extract.partial", (event) => {
             const payload = JSON.parse((event as MessageEvent).data) as {
-              basic?: Record<string, unknown>;
+              basic?: {
+                name?: string | null;
+                phone?: string | null;
+                email?: string | null;
+                city?: string | null;
+              };
             };
             uploadActions.appendUploadEvent({
               uploadId,
               type: "extract.partial",
               eventPayload: payload
             });
-            uploadActions.setPartialExtraction({
+            if (payload.basic) {
+              uploadActions.setPartialExtraction({
+                uploadId,
+                stage: "basic",
+                data: payload.basic
+              });
+            }
+          });
+
+          source.addEventListener("extract.section", (event) => {
+            const payload = JSON.parse((event as MessageEvent).data) as {
+              stage?: "basic" | "education" | "workExperiences" | "skills" | "projects";
+              data?: unknown;
+              progress?: number;
+            };
+            uploadActions.appendUploadEvent({
               uploadId,
-              basic: payload.basic ?? {}
+              type: "extract.section",
+              eventPayload: payload as Record<string, unknown>
             });
+
+            if (payload.progress !== undefined) {
+              uploadActions.setUploadProgress({
+                uploadId,
+                progress: payload.progress,
+                status: "extracting"
+              });
+            }
+
+            if (payload.stage === "basic" && payload.data && typeof payload.data === "object") {
+              uploadActions.setPartialExtraction({
+                uploadId,
+                stage: "basic",
+                data: payload.data as {
+                  name?: string | null;
+                  phone?: string | null;
+                  email?: string | null;
+                  city?: string | null;
+                }
+              });
+            }
+
+            if (payload.stage === "education" && Array.isArray(payload.data)) {
+              uploadActions.setPartialExtraction({
+                uploadId,
+                stage: "education",
+                data: payload.data as Array<{
+                  school: string;
+                  major?: string | null;
+                  degree?: string | null;
+                  graduationDate?: string | null;
+                }>
+              });
+            }
+
+            if (payload.stage === "workExperiences" && Array.isArray(payload.data)) {
+              uploadActions.setPartialExtraction({
+                uploadId,
+                stage: "workExperiences",
+                data: payload.data as Array<{
+                  companyName: string;
+                  title?: string | null;
+                  startDate?: string | null;
+                  endDate?: string | null;
+                  summary?: string | null;
+                }>
+              });
+            }
+
+            if (payload.stage === "skills" && Array.isArray(payload.data)) {
+              uploadActions.setPartialExtraction({
+                uploadId,
+                stage: "skills",
+                data: payload.data as Array<{
+                  name: string;
+                  type: string;
+                }>
+              });
+            }
+
+            if (payload.stage === "projects" && Array.isArray(payload.data)) {
+              uploadActions.setPartialExtraction({
+                uploadId,
+                stage: "projects",
+                data: payload.data as Array<{
+                  projectName: string;
+                  techStack?: string[];
+                  roleSummary?: string | null;
+                  highlights?: string[];
+                }>
+              });
+            }
           });
 
           source.addEventListener("extract.completed", (event) => {
             const payload = JSON.parse((event as MessageEvent).data) as {
               candidateId?: string;
+              progress?: number;
             };
             uploadActions.appendUploadEvent({
               uploadId,
@@ -261,6 +379,57 @@ export function InstanceProvider({ children }: { children: React.ReactNode }) {
               completedPayload.candidateId = payload.candidateId;
             }
             uploadActions.markUploadCompleted(completedPayload);
+
+            if (payload.candidateId) {
+              void fetchCandidateDetailRequest(payload.candidateId)
+                .then((response) => response.data)
+                .then((detail) => {
+                  uploadActions.hydrateExtractionSnapshot({
+                    uploadId,
+                    candidateId: payload.candidateId as string,
+                    basic: detail.basic,
+                    education: detail.education.map((item) => ({
+                      school: item.school,
+                      major: item.major,
+                      degree: item.degree,
+                      graduationDate: item.graduationDate
+                    })),
+                    workExperiences: detail.workExperiences.map((item) => ({
+                      companyName: item.companyName,
+                      title: item.title,
+                      startDate: item.startDate,
+                      endDate: item.endDate,
+                      summary: item.summary
+                    })),
+                    skills: detail.skills.map((item) => ({
+                      name: item.name,
+                      type: item.type
+                    })),
+                    projects: detail.projects.map((item) => ({
+                      projectName: item.projectName,
+                      techStack: item.techStack,
+                      roleSummary: item.roleSummary,
+                      highlights: item.highlights
+                    }))
+                  });
+                })
+                .catch(() => {});
+
+              void fetchCandidateListRequest({
+                page: candidateQueryRef.current.page,
+                pageSize: candidateQueryRef.current.pageSize,
+                keyword: candidateQueryRef.current.keyword,
+                sortBy: candidateQueryRef.current.sortBy,
+                sortOrder: candidateQueryRef.current.sortOrder
+              })
+                .then((response) => {
+                  candidateActions.hydrateList({
+                    items: response.data.items,
+                    total: response.meta.total ?? response.data.items.length
+                  });
+                })
+                .catch(() => {});
+            }
           });
 
           source.addEventListener("job.failed", (event) => {
@@ -327,6 +496,14 @@ export function InstanceProvider({ children }: { children: React.ReactNode }) {
         async fetchDetail(candidateId) {
           const response = await fetchCandidateDetailRequest(candidateId);
           return response.data;
+        },
+        async updateProfile(candidateId, input) {
+          await updateCandidateProfileRequest(candidateId, input);
+          await this.fetchList();
+        },
+        async updateStatus(candidateId, status) {
+          await updateCandidateStatusRequest(candidateId, status);
+          await this.fetchList();
         }
       },
       job: {
@@ -366,6 +543,32 @@ export function InstanceProvider({ children }: { children: React.ReactNode }) {
           } catch (error) {
             const message =
               error instanceof Error ? error.message : "Failed to create matching.";
+            matchingActions.setMatchingError(message);
+            throw error;
+          }
+        },
+        async compareJobs(input) {
+          matchingActions.setMatchingLoading(true);
+
+          try {
+            const groups = await Promise.all(
+              input.jobIds.map((jobId) =>
+                createMatchingRequest(
+                  {
+                    jobId,
+                    candidateIds: input.candidateIds
+                  },
+                  aiConfigRef.current
+                ).then((response) => response.data.results)
+              )
+            );
+
+            const results = groups.flat();
+            matchingActions.hydrateResults(results);
+            return results;
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : "Failed to compare matching results.";
             matchingActions.setMatchingError(message);
             throw error;
           }

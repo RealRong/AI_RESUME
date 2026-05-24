@@ -6,6 +6,7 @@ import {
   updateCandidateProfile,
   updateCandidateStatus
 } from "../repositories/candidates.repository";
+import { listCandidateMatchings } from "../repositories/matchings.repository";
 import { validateBody } from "../middleware/validate-body";
 import {
   updateCandidateSchema,
@@ -66,6 +67,7 @@ candidatesRouter.get("/:candidateId", async (req, res) => {
   const pdfPreviewUrl = detail.source_file_url
     ? await createSignedResumeUrl(detail.source_file_url)
     : null;
+  const matchings = await listCandidateMatchings(detail.id);
 
   return ok(res, {
     id: detail.id,
@@ -102,6 +104,7 @@ candidatesRouter.get("/:candidateId", async (req, res) => {
       roleSummary: item.role_summary,
       highlights: item.highlights ?? []
     })),
+    matchings,
     pdfPreviewUrl
   });
 });

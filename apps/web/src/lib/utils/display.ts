@@ -8,10 +8,11 @@ const uploadStatusLabels = {
 } as const;
 
 const candidateStatusLabels: Record<string, string> = {
-  draft: "草稿",
-  processing: "处理中",
-  completed: "已完成",
-  failed: "失败"
+  pending: "待筛选",
+  screening_passed: "初筛通过",
+  interviewing: "面试中",
+  hired: "已录用",
+  rejected: "已淘汰"
 };
 
 export function getUploadStatusLabel(status: keyof typeof uploadStatusLabels) {

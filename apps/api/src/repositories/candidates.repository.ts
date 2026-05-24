@@ -1,6 +1,42 @@
 import type { CandidateStatus } from "@ai-resume/shared-types";
 import { getSupabaseAdminClient } from "../clients/supabase";
 
+function normalizeDateInput(value?: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const normalized = value.trim();
+
+  if (!normalized) {
+    return null;
+  }
+
+  const yearOnlyMatch = normalized.match(/^(\d{4})$/);
+  if (yearOnlyMatch) {
+    return `${yearOnlyMatch[1]}-01-01`;
+  }
+
+  const yearMonthMatch = normalized.match(/^(\d{4})[./-](\d{1,2})$/);
+  if (yearMonthMatch) {
+    const [, year, month] = yearMonthMatch;
+    const safeMonth = (month ?? "1").padStart(2, "0");
+    return `${year}-${safeMonth}-01`;
+  }
+
+  const fullDateMatch = normalized.match(/^(\d{4})[./-](\d{1,2})[./-](\d{1,2})$/);
+  if (fullDateMatch) {
+    const [, year, month, day] = fullDateMatch;
+    return `${year}-${(month ?? "1").padStart(2, "0")}-${(day ?? "1").padStart(2, "0")}`;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    return normalized;
+  }
+
+  return null;
+}
+
 type CandidateDraftRow = {
   id: string;
   upload_id: string;
@@ -18,6 +54,7 @@ type CandidateListRow = {
   latest_overall_score: number | null;
   created_at: string;
   candidate_skills: Array<{ skill_name: string }>;
+  candidate_educations: Array<{ school: string }>;
 };
 
 type CandidateDetailRow = {
@@ -120,7 +157,7 @@ export async function listCandidates(params: {
   let query = (supabase as any)
     .from("candidates")
     .select(
-      "id, name, email, city, status, latest_overall_score, created_at, candidate_skills(skill_name)",
+      "id, name, email, city, status, latest_overall_score, created_at, candidate_skills(skill_name), candidate_educations(school)",
       { count: "exact" }
     )
     .order("created_at", { ascending: false })
@@ -146,6 +183,7 @@ export async function listCandidates(params: {
       city: row.city,
       status: row.status,
       skills: row.candidate_skills?.map((skill) => skill.skill_name) ?? [],
+      schools: row.candidate_educations?.map((education) => education.school).filter(Boolean) ?? [],
       latestOverallScore: row.latest_overall_score,
       uploadedAt: row.created_at
     })),
@@ -198,29 +236,29 @@ export async function updateCandidateProfile(
   candidateId: string,
   payload: {
     basic?: {
-      name?: string;
-      phone?: string;
-      email?: string;
-      city?: string;
+      name?: string | null;
+      phone?: string | null;
+      email?: string | null;
+      city?: string | null;
     };
     skills?: Array<{ name: string; type: string }>;
     education?: Array<{
       school?: string;
-      major?: string;
-      degree?: string;
-      graduationDate?: string;
+      major?: string | null;
+      degree?: string | null;
+      graduationDate?: string | null;
     }>;
     workExperiences?: Array<{
       companyName?: string;
-      title?: string;
-      startDate?: string;
-      endDate?: string;
-      summary?: string;
+      title?: string | null;
+      startDate?: string | null;
+      endDate?: string | null;
+      summary?: string | null;
     }>;
     projects?: Array<{
       projectName?: string;
       techStack?: string[];
-      roleSummary?: string;
+      roleSummary?: string | null;
       highlights?: string[];
     }>;
   }
@@ -270,7 +308,7 @@ export async function updateCandidateProfile(
           school: item.school,
           major: item.major ?? null,
           degree: item.degree ?? null,
-          graduation_date: item.graduationDate ?? null,
+          graduation_date: normalizeDateInput(item.graduationDate),
           sort_order: index
         }))
       );
@@ -293,8 +331,8 @@ export async function updateCandidateProfile(
           candidate_id: candidateId,
           company_name: item.companyName,
           title: item.title ?? null,
-          start_date: item.startDate ?? null,
-          end_date: item.endDate ?? null,
+          start_date: normalizeDateInput(item.startDate),
+          end_date: normalizeDateInput(item.endDate),
           summary: item.summary ?? null,
           sort_order: index
         }))
