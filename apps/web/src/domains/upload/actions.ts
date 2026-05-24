@@ -9,6 +9,26 @@ export const enqueueUploadsAtom = atom(null, (_get, set, items: UploadQueueItem[
   }));
 });
 
+export const replaceQueuedUploadsAtom = atom(
+  null,
+  (
+    _get,
+    set,
+    payload: {
+      localUploadIds: string[];
+      items: UploadQueueItem[];
+    }
+  ) => {
+    set(uploadDomainStateAtom, (prev) => ({
+      ...prev,
+      queue: [
+        ...prev.queue.filter((item) => !payload.localUploadIds.includes(item.uploadId)),
+        ...payload.items
+      ]
+    }));
+  }
+);
+
 export const setUploadProgressAtom = atom(
   null,
   (_get, set, payload: { uploadId: string; progress: number; status?: UploadQueueItem["status"] }) => {

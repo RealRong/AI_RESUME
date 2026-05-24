@@ -46,19 +46,21 @@ export function InstanceProvider({ children }: { children: React.ReactNode }) {
           }));
 
           uploadActions.enqueueUploads(queued);
+          const localUploadIds = queued.map((item) => item.uploadId);
 
           const response = await createUploadsRequest(files);
           const uploads = response.data.uploads;
 
-          uploadActions.enqueueUploads(
-            uploads.map((item) => ({
+          uploadActions.replaceQueuedUploads({
+            localUploadIds,
+            items: uploads.map((item) => ({
               uploadId: item.uploadId,
               candidateId: item.candidateId,
               fileName: item.fileName,
               progress: 0,
               status: "uploading" as const
             }))
-          );
+          });
 
           return uploads;
         },

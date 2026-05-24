@@ -17,6 +17,14 @@ function getRequiredEnv(name: string) {
   return value;
 }
 
+function getSupabaseServiceRoleKey() {
+  return (
+    process.env.SUPABASE_SERVICE_ROLE_KEY ??
+    process.env.SUPABASE_SECRET_KEY ??
+    ""
+  );
+}
+
 export function getSupabaseAdminClient() {
   if (cachedClient) {
     return cachedClient;
@@ -24,7 +32,12 @@ export function getSupabaseAdminClient() {
 
   cachedClient = createClient<any>(
     getRequiredEnv("SUPABASE_URL"),
-    getRequiredEnv("SUPABASE_SECRET_KEY"),
+    getSupabaseServiceRoleKey() ||
+      (() => {
+        throw new Error(
+          "Missing required environment variable: SUPABASE_SERVICE_ROLE_KEY"
+        );
+      })(),
     {
       auth: {
         persistSession: false,

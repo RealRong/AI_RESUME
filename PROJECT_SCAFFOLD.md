@@ -193,9 +193,15 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 
 OPENAI_API_KEY=
 SUPABASE_URL=
-SUPABASE_SECRET_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
 DATABASE_URL=
 APP_BASE_URL=
 WEB_BASE_URL=
 ```
 
+本地开发推荐直接落地为：
+
+- `apps/web/.env.local`
+- `apps/api/.env`
+
+其中后端必须使用 `SUPABASE_SERVICE_ROLE_KEY`，不能误填 publishable key。

@@ -748,7 +748,7 @@ AI 提取结果建议统一为稳定 JSON：
 
 - `OPENAI_API_KEY`
 - `SUPABASE_URL`
-- `SUPABASE_SECRET_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
 - `DATABASE_URL`
 - `APP_BASE_URL`
 - `WEB_BASE_URL`
@@ -852,4 +852,3 @@ AI 提取结果建议统一为稳定 JSON：
 - `MVP 开发任务拆解`
 - `数据库 schema SQL`
 - `前后端目录脚手架`
-

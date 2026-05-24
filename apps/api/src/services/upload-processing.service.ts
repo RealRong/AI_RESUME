@@ -22,6 +22,10 @@ type AcceptedUpload = {
 
 type UploadableFile = Express.Multer.File;
 
+function normalizeUploadFileName(fileName: string) {
+  return Buffer.from(fileName, "latin1").toString("utf8");
+}
+
 async function emitEvent(
   uploadId: string,
   eventType: UploadEventType,
@@ -35,14 +39,16 @@ async function emitEvent(
 }
 
 export async function createUploadDraft(file: UploadableFile): Promise<AcceptedUpload> {
+  const fileName = normalizeUploadFileName(file.originalname);
+
   const storage = await uploadResumePdf({
-    fileName: file.originalname,
+    fileName,
     fileBuffer: file.buffer,
     contentType: file.mimetype
   });
 
   const upload = await createResumeUpload({
-    fileName: file.originalname,
+    fileName,
     filePath: storage.objectPath,
     fileSize: file.size,
     mimeType: file.mimetype
@@ -56,13 +62,13 @@ export async function createUploadDraft(file: UploadableFile): Promise<AcceptedU
   await emitEvent(upload.id, "upload.accepted", {
     uploadId: upload.id,
     candidateId: candidate.id,
-    fileName: file.originalname
+    fileName
   });
 
   return {
     uploadId: upload.id,
     candidateId: candidate.id,
-    fileName: file.originalname,
+    fileName,
     status: "uploaded"
   };
 }

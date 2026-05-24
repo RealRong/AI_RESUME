@@ -7,6 +7,7 @@ import {
   enqueueUploadsAtom,
   markUploadCompletedAtom,
   markUploadFailedAtom,
+  replaceQueuedUploadsAtom,
   setPartialExtractionAtom,
   setUploadProgressAtom
 } from "./actions";
@@ -20,6 +21,7 @@ export function useUploadQueueState() {
 
 export function useUploadQueueActions() {
   const enqueueUploads = useSetAtom(enqueueUploadsAtom);
+  const replaceQueuedUploads = useSetAtom(replaceQueuedUploadsAtom);
   const setUploadProgress = useSetAtom(setUploadProgressAtom);
   const appendUploadEvent = useSetAtom(appendUploadEventAtom);
   const setPartialExtraction = useSetAtom(setPartialExtractionAtom);
@@ -29,6 +31,7 @@ export function useUploadQueueActions() {
   return useMemo(
     () => ({
       enqueueUploads,
+      replaceQueuedUploads,
       setUploadProgress,
       appendUploadEvent,
       setPartialExtraction,
@@ -40,6 +43,7 @@ export function useUploadQueueActions() {
       enqueueUploads,
       markUploadCompleted,
       markUploadFailed,
+      replaceQueuedUploads,
       setPartialExtraction,
       setUploadProgress
     ]
