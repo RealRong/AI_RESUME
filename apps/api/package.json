@@ -1,0 +1,31 @@
+{
+  "name": "@ai-resume/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "lint": "echo 'api lint placeholder'",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "format": "echo 'api format placeholder'"
+  },
+  "dependencies": {
+    "@ai-resume/shared-types": "workspace:*",
+    "@supabase/supabase-js": "^2.106.1",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "multer": "^2.1.1",
+    "pdf-parse": "^2.4.5",
+    "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.1",
+    "@types/multer": "^2.1.0",
+    "@types/node": "^22.15.30",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}
