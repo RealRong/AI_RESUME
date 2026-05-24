@@ -44,6 +44,8 @@ export async function createMatchingRecord(input: {
   strengths: string[];
   risks: string[];
   evidence: string[];
+  modelName?: string;
+  promptVersion?: string;
 }) {
   const supabase = getSupabaseAdminClient();
   const { data, error } = await (supabase as any)
@@ -59,8 +61,8 @@ export async function createMatchingRecord(input: {
       strengths_json: input.strengths,
       risks_json: input.risks,
       evidence_json: input.evidence,
-      model_name: "rule-based-v1",
-      prompt_version: "rule-based-v1"
+      model_name: input.modelName ?? "rule-based-v1",
+      prompt_version: input.promptVersion ?? "rule-based-v1"
     })
     .select("*")
     .single();

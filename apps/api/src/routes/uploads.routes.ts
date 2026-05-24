@@ -10,6 +10,7 @@ import {
   createUploadDraft,
   processUpload
 } from "../services/upload-processing.service";
+import { getAiConfigFromRequest } from "../utils/ai-config";
 import { ok } from "../utils/http";
 
 export const uploadsRouter = Router();
@@ -35,6 +36,7 @@ const upload = multer({
 
 uploadsRouter.post("/", upload.array("files", 10), async (req, res) => {
   const files = ((req as Request & { files?: Express.Multer.File[] }).files ?? []);
+  const aiConfig = getAiConfigFromRequest(req);
 
   if (files.length === 0) {
     return res.status(400).json({
@@ -53,7 +55,7 @@ uploadsRouter.post("/", upload.array("files", 10), async (req, res) => {
     const accepted = uploads[index];
     if (accepted) {
       queueMicrotask(() => {
-        void processUpload(file, accepted);
+        void processUpload(file, accepted, aiConfig);
       });
     }
   }

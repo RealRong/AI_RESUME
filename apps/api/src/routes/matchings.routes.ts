@@ -3,12 +3,17 @@ import { validateBody } from "../middleware/validate-body";
 import { getMatchingById } from "../repositories/matchings.repository";
 import { createMatchingSchema } from "../schemas/matchings.schema";
 import { createMatchings } from "../services/matching.service";
+import { getAiConfigFromRequest } from "../utils/ai-config";
 import { ok } from "../utils/http";
 
 export const matchingsRouter = Router();
 
 matchingsRouter.post("/", validateBody(createMatchingSchema), async (req, res) => {
-  const results = await createMatchings(req.body);
+  const aiConfig = getAiConfigFromRequest(req);
+  const results = await createMatchings({
+    ...req.body,
+    aiConfig
+  });
   return ok(res, {
     results
   });

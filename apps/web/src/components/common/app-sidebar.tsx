@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Route } from "next";
-import { BriefcaseBusiness, LayoutGrid, SearchCheck, Upload } from "lucide-react";
+import { Bot, BriefcaseBusiness, LayoutGrid, SearchCheck, Upload } from "lucide-react";
+import { AiSettingsDialog } from "@/components/common/ai-settings-dialog";
+import { useSettingsState } from "@/domains/settings/hooks";
+import { useInstance } from "@/instance";
 import { cn } from "@/lib/utils";
 
 const navItems: Array<{
@@ -47,6 +50,12 @@ function isActive(pathname: string, href: string) {
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const instance = useInstance();
+  const { ai } = useSettingsState();
+  const configured = Boolean(ai.savedConfig?.apiKey);
+  const configSummary = configured
+    ? `${ai.savedConfig?.model ?? "已配置"} · ${ai.savedConfig?.baseUrl ?? ""}`.replace(/^ · /, "")
+    : "未配置";
 
   return (
     <aside className="app-sidebar-shell">
@@ -92,6 +101,32 @@ export function AppSidebar() {
           );
         })}
       </nav>
+      <div className="border-t border-sidebar-border px-4 py-4">
+        <button
+          type="button"
+          onClick={() => instance.settings.openAiDialog()}
+          className="flex w-full items-start gap-3 rounded-lg border border-transparent px-3 py-3 text-left transition-colors hover:bg-muted"
+        >
+          <div className="mt-0.5 rounded-md border border-border bg-background p-2">
+            <Bot className="h-4 w-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-medium text-foreground">AI 配置</p>
+              <span
+                className={cn(
+                  "text-xs",
+                  configured ? "text-foreground" : "text-fg-muted"
+                )}
+              >
+                {configured ? "已配置" : "未配置"}
+              </span>
+            </div>
+            <p className="mt-1 line-clamp-2 text-xs leading-5 text-fg-muted">{configSummary}</p>
+          </div>
+        </button>
+      </div>
+      <AiSettingsDialog />
     </aside>
   );
 }

@@ -1,4 +1,5 @@
 import type { UploadEventType } from "@ai-resume/shared-types";
+import type { AiProviderConfig } from "@ai-resume/shared-types";
 import {
   appendUploadEvent,
   createResumeUpload,
@@ -10,7 +11,10 @@ import {
 } from "../repositories/candidates.repository";
 import { uploadResumePdf } from "../repositories/storage.repository";
 import { cleanResumeText } from "./resume-cleaner.service";
-import { extractResumeBasics } from "./resume-extraction.service";
+import {
+  extractResumeBasics,
+  extractResumeBasicsWithAi
+} from "./resume-extraction.service";
 import { parsePdfBuffer } from "./pdf-parser.service";
 
 type AcceptedUpload = {
@@ -73,7 +77,11 @@ export async function createUploadDraft(file: UploadableFile): Promise<AcceptedU
   };
 }
 
-export async function processUpload(file: UploadableFile, accepted: AcceptedUpload) {
+export async function processUpload(
+  file: UploadableFile,
+  accepted: AcceptedUpload,
+  aiConfig?: AiProviderConfig | null
+) {
   try {
     await updateResumeUpload({
       uploadId: accepted.uploadId,
@@ -106,7 +114,12 @@ export async function processUpload(file: UploadableFile, accepted: AcceptedUplo
       progress: 60
     });
 
-    const basics = extractResumeBasics(cleanedText);
+    const basics = aiConfig?.apiKey
+      ? await extractResumeBasicsWithAi({
+          cleanedText,
+          config: aiConfig
+        }).catch(() => extractResumeBasics(cleanedText))
+      : extractResumeBasics(cleanedText);
     await updateCandidateExtraction({
       candidateId: accepted.candidateId,
       basic: basics,

@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useRef } from "react";
+import { aiProviderConfigSchema, type AiProviderConfig } from "@ai-resume/shared-types";
 import type { AppInstance } from "./types";
 import {
   createUploadsRequest,
@@ -18,8 +19,10 @@ import { useUploadQueueActions, useUploadQueueState } from "@/domains/upload/hoo
 import { useCandidateListActions, useCandidateListState } from "@/domains/candidate/hooks";
 import { useJobActions } from "@/domains/job/hooks";
 import { useMatchingWorkspaceActions } from "@/domains/matching/hooks";
+import { useSettingsActions, useSettingsState } from "@/domains/settings/hooks";
 
 const InstanceContext = createContext<AppInstance | null>(null);
+const AI_SETTINGS_STORAGE_KEY = "ai.resume.settings";
 
 export function InstanceProvider({ children }: { children: React.ReactNode }) {
   const uploadActions = useUploadQueueActions();
@@ -28,9 +31,13 @@ export function InstanceProvider({ children }: { children: React.ReactNode }) {
   const candidateActions = useCandidateListActions();
   const jobActions = useJobActions();
   const matchingActions = useMatchingWorkspaceActions();
+  const settingsState = useSettingsState();
+  const settingsActions = useSettingsActions();
   const uploadEventSourcesRef = useRef(new Map<string, EventSource>());
   const uploadQueueRef = useRef(uploadState.queue);
   const candidateQueryRef = useRef(candidateState.query);
+  const aiConfigRef = useRef<AiProviderConfig | null>(settingsState.ai.savedConfig);
+  const aiDraftRef = useRef(settingsState.ai.draft);
 
   useEffect(() => {
     candidateQueryRef.current = candidateState.query;
@@ -39,6 +46,35 @@ export function InstanceProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     uploadQueueRef.current = uploadState.queue;
   }, [uploadState.queue]);
+
+  useEffect(() => {
+    aiConfigRef.current = settingsState.ai.savedConfig;
+  }, [settingsState.ai.savedConfig]);
+
+  useEffect(() => {
+    aiDraftRef.current = settingsState.ai.draft;
+  }, [settingsState.ai.draft]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      const raw = window.localStorage.getItem(AI_SETTINGS_STORAGE_KEY);
+
+      if (!raw) {
+        settingsActions.hydrateAi(null);
+        return;
+      }
+
+      const parsed = aiProviderConfigSchema.parse(JSON.parse(raw));
+      settingsActions.hydrateAi(parsed);
+    } catch {
+      window.localStorage.removeItem(AI_SETTINGS_STORAGE_KEY);
+      settingsActions.hydrateAi(null);
+    }
+  }, [settingsActions]);
 
   useEffect(() => {
     return () => {
@@ -60,6 +96,35 @@ export function InstanceProvider({ children }: { children: React.ReactNode }) {
 
   const instance = useMemo<AppInstance>(() => {
     return {
+      settings: {
+        openAiDialog() {
+          settingsActions.openAiDialog();
+        },
+        closeAiDialog() {
+          settingsActions.closeAiDialog();
+        },
+        updateAiDraft(input) {
+          settingsActions.updateAiDraft(input);
+        },
+        saveAiConfig() {
+          const parsed = aiProviderConfigSchema.parse(aiDraftRef.current);
+
+          settingsActions.saveAi(parsed);
+          aiConfigRef.current = parsed;
+
+          if (typeof window !== "undefined") {
+            window.localStorage.setItem(AI_SETTINGS_STORAGE_KEY, JSON.stringify(parsed));
+          }
+        },
+        clearAiConfig() {
+          settingsActions.clearAi();
+          aiConfigRef.current = null;
+
+          if (typeof window !== "undefined") {
+            window.localStorage.removeItem(AI_SETTINGS_STORAGE_KEY);
+          }
+        }
+      },
       upload: {
         async createUploads(files) {
           const queued = files.map((file) => {
@@ -108,7 +173,7 @@ export function InstanceProvider({ children }: { children: React.ReactNode }) {
           }
 
           try {
-            const response = await createUploadsRequest(files);
+            const response = await createUploadsRequest(files, aiConfigRef.current);
             const uploads = response.data.uploads;
 
             uploadActions.replaceQueuedUploads({
@@ -295,7 +360,7 @@ export function InstanceProvider({ children }: { children: React.ReactNode }) {
           matchingActions.setMatchingLoading(true);
 
           try {
-            const response = await createMatchingRequest(input);
+            const response = await createMatchingRequest(input, aiConfigRef.current);
             matchingActions.hydrateResults(response.data.results);
             return response.data.results;
           } catch (error) {
@@ -311,6 +376,7 @@ export function InstanceProvider({ children }: { children: React.ReactNode }) {
     candidateActions,
     jobActions,
     matchingActions,
+    settingsActions,
     uploadActions
   ]);
 

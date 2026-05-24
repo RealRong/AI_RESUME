@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { PageShell } from "@/components/common/page-shell";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/common/empty-state";
 import { Progress } from "@/components/ui/progress";
@@ -35,7 +34,7 @@ export function MatchingWorkspaceFeature() {
   return (
     <PageShell
       title="岗位匹配分析"
-      description="选择岗位与候选人，查看匹配得分和评估摘要。"
+      description="选择岗位与候选人，查看匹配得分、亮点、风险和证据摘要。"
       actions={
         <Button
           onClick={() => void runMatching()}
@@ -47,12 +46,12 @@ export function MatchingWorkspaceFeature() {
     >
       <section className="grid gap-6 xl:grid-cols-[0.7fr_1.3fr]">
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>选择 JD</CardTitle>
-              <CardDescription>先确定本次分析对应的岗位。</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
+          <section className="rounded-xl bg-muted/20">
+            <div className="border-b border-border px-5 py-4">
+              <h2 className="text-lg font-semibold text-foreground">选择岗位</h2>
+              <p className="mt-1 text-sm text-fg-muted">先确定本次分析对应的岗位。</p>
+            </div>
+            <div className="space-y-3 px-5 py-5">
               {jobList.items.length === 0 ? (
                 <EmptyState title="暂无 JD" description="先到 JD 页面创建岗位，再回到这里执行评分。" />
               ) : (
@@ -61,8 +60,8 @@ export function MatchingWorkspaceFeature() {
                     key={job.id}
                     type="button"
                     onClick={() => actions.setJobId(job.id)}
-                    className={`w-full rounded-lg border p-4 text-left transition ${
-                      workspace.jobId === job.id ? "border-primary bg-muted/60" : "border-border hover:bg-muted/40"
+                    className={`w-full rounded-lg px-4 py-4 text-left transition ${
+                      workspace.jobId === job.id ? "bg-background" : "hover:bg-muted/30"
                     }`}
                   >
                     <p className="font-medium">{job.title}</p>
@@ -70,15 +69,15 @@ export function MatchingWorkspaceFeature() {
                   </button>
                 ))
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </section>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>选择候选人</CardTitle>
-              <CardDescription>最多选择 3 位候选人进行对比。</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
+          <section className="rounded-xl bg-muted/20">
+            <div className="border-b border-border px-5 py-4">
+              <h2 className="text-lg font-semibold text-foreground">选择候选人</h2>
+              <p className="mt-1 text-sm text-fg-muted">最多选择 3 位候选人进行对比。</p>
+            </div>
+            <div className="space-y-3 px-5 py-5">
               {candidateRemote.items.length === 0 ? (
                 <EmptyState title="暂无候选人" description="先上传并完成简历解析，候选人才能参与匹配。" />
               ) : (
@@ -89,8 +88,8 @@ export function MatchingWorkspaceFeature() {
                       key={candidate.id}
                       type="button"
                       onClick={() => actions.toggleCandidate(candidate.id)}
-                      className={`flex w-full items-center justify-between gap-3 rounded-lg border p-4 text-left transition ${
-                        active ? "border-primary bg-muted/60" : "border-border hover:bg-muted/40"
+                      className={`flex w-full items-center justify-between gap-3 rounded-lg px-4 py-4 text-left transition ${
+                        active ? "bg-background" : "hover:bg-muted/30"
                       }`}
                     >
                       <div>
@@ -102,16 +101,16 @@ export function MatchingWorkspaceFeature() {
                   );
                 })
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </section>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>评分结果</CardTitle>
-            <CardDescription>展示匹配得分及各维度结果。</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <section className="rounded-xl bg-muted/20">
+          <div className="border-b border-border px-5 py-4">
+            <h2 className="text-lg font-semibold text-foreground">分析结果</h2>
+            <p className="mt-1 text-sm text-fg-muted">展示匹配得分及各维度结论。</p>
+          </div>
+          <div className="space-y-4 px-5 py-5">
             {results.error ? (
               <EmptyState title="评分失败" description={results.error} />
             ) : results.loading ? (
@@ -120,7 +119,7 @@ export function MatchingWorkspaceFeature() {
               <EmptyState title="暂无评分结果" description="选择岗位和候选人后，点击“开始分析”。" />
             ) : (
               results.items.map((result) => (
-                <div key={result.matchingId} className="space-y-4 rounded-lg border border-border p-5">
+                <article key={result.matchingId} className="space-y-5 rounded-xl bg-background px-5 py-5">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-sm text-fg-muted">候选人编号</p>
@@ -157,11 +156,49 @@ export function MatchingWorkspaceFeature() {
                   <div className="rounded-md bg-muted/50 p-4 text-sm leading-6 text-fg-muted">
                     {result.summary}
                   </div>
-                </div>
+                  <div className="grid gap-4 lg:grid-cols-3">
+                    <section className="space-y-3 rounded-lg bg-muted/30 px-4 py-4">
+                      <h3 className="text-sm font-medium text-foreground">匹配亮点</h3>
+                      <div className="space-y-2 text-sm text-fg-muted">
+                        {result.strengths.length ? (
+                          result.strengths.map((item) => (
+                            <p key={item}>{item}</p>
+                          ))
+                        ) : (
+                          <p>暂无亮点摘要</p>
+                        )}
+                      </div>
+                    </section>
+                    <section className="space-y-3 rounded-lg bg-muted/30 px-4 py-4">
+                      <h3 className="text-sm font-medium text-foreground">主要风险</h3>
+                      <div className="space-y-2 text-sm text-fg-muted">
+                        {result.risks.length ? (
+                          result.risks.map((item) => (
+                            <p key={item}>{item}</p>
+                          ))
+                        ) : (
+                          <p>暂无风险摘要</p>
+                        )}
+                      </div>
+                    </section>
+                    <section className="space-y-3 rounded-lg bg-muted/30 px-4 py-4">
+                      <h3 className="text-sm font-medium text-foreground">证据摘要</h3>
+                      <div className="space-y-2 text-sm text-fg-muted">
+                        {result.evidence.length ? (
+                          result.evidence.map((item) => (
+                            <p key={item}>{item}</p>
+                          ))
+                        ) : (
+                          <p>暂无证据摘要</p>
+                        )}
+                      </div>
+                    </section>
+                  </div>
+                </article>
               ))
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       </section>
     </PageShell>
   );

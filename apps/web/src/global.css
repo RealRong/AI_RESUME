@@ -102,7 +102,7 @@
 
 @layer components {
   .app-shell {
-    @apply min-h-screen bg-background;
+    @apply h-screen overflow-hidden bg-background;
   }
 
   .app-page {
@@ -126,7 +126,7 @@
   }
 
   .app-sidebar-shell {
-    @apply hidden bg-background lg:flex lg:min-h-screen lg:w-[280px] lg:flex-col lg:border-r lg:border-border;
+    @apply hidden h-screen shrink-0 overflow-hidden bg-background lg:flex lg:w-[280px] lg:flex-col lg:border-r lg:border-border;
   }
 
   .app-sidebar-nav {

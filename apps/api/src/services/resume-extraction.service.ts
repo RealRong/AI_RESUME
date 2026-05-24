@@ -1,4 +1,7 @@
-type ExtractionBasicInfo = {
+import type { AiProviderConfig } from "@ai-resume/shared-types";
+import { createAiJsonCompletion } from "./ai-provider.service";
+
+export type ExtractionBasicInfo = {
   name: string | null;
   phone: string | null;
   email: string | null;
@@ -24,4 +27,28 @@ export function extractResumeBasics(cleanedText: string): ExtractionBasicInfo {
     email,
     city: null
   };
+}
+
+export async function extractResumeBasicsWithAi(params: {
+  cleanedText: string;
+  config: AiProviderConfig;
+}) {
+  const result = await createAiJsonCompletion<Partial<ExtractionBasicInfo>>({
+    config: params.config,
+    systemPrompt:
+      "你是一个简历信息提取器。只返回 JSON，不要返回 Markdown。请从简历文本中提取候选人的姓名、手机号、邮箱、城市。无法确定时返回 null。",
+    userPrompt: [
+      "请从以下简历文本中提取结构化字段，并返回 JSON：",
+      '{ "name": string | null, "phone": string | null, "email": string | null, "city": string | null }',
+      "",
+      params.cleanedText.slice(0, 16000)
+    ].join("\n")
+  });
+
+  return {
+    name: typeof result.name === "string" ? result.name.trim() || null : null,
+    phone: typeof result.phone === "string" ? result.phone.trim() || null : null,
+    email: typeof result.email === "string" ? result.email.trim() || null : null,
+    city: typeof result.city === "string" ? result.city.trim() || null : null
+  } satisfies ExtractionBasicInfo;
 }

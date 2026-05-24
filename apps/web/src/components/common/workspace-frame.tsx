@@ -10,9 +10,9 @@ export function WorkspaceFrame({
 }) {
   return (
     <main className="app-shell">
-      <div className="flex min-h-screen w-full">
+      <div className="flex h-screen w-full overflow-hidden">
         <AppSidebar />
-        <div className="min-w-0 flex-1">
+        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
           <div className={cn("app-page", className)}>{children}</div>
         </div>
       </div>

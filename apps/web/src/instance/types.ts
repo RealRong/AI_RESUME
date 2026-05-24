@@ -1,4 +1,5 @@
 import type {
+  AiProviderConfig,
   CandidateDetail,
   CandidateListItem,
   Job,
@@ -16,6 +17,13 @@ export type CandidateListQueryInput = {
 };
 
 export type AppInstance = {
+  settings: {
+    openAiDialog(): void;
+    closeAiDialog(): void;
+    updateAiDraft(input: Partial<AiProviderConfig>): void;
+    saveAiConfig(): void;
+    clearAiConfig(): void;
+  };
   upload: {
     createUploads(files: File[]): Promise<UploadListItem[]>;
     subscribeUploadEvents(uploadId: string): void;
