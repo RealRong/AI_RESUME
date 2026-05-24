@@ -1,7 +1,15 @@
 "use client";
 
+import { useMemo } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
-import { enqueueUploadsAtom } from "./actions";
+import {
+  appendUploadEventAtom,
+  enqueueUploadsAtom,
+  markUploadCompletedAtom,
+  markUploadFailedAtom,
+  setPartialExtractionAtom,
+  setUploadProgressAtom
+} from "./actions";
 import { uploadQueueAtom } from "./selectors";
 
 export function useUploadQueueState() {
@@ -11,7 +19,29 @@ export function useUploadQueueState() {
 }
 
 export function useUploadQueueActions() {
-  return {
-    enqueueUploads: useSetAtom(enqueueUploadsAtom)
-  };
+  const enqueueUploads = useSetAtom(enqueueUploadsAtom);
+  const setUploadProgress = useSetAtom(setUploadProgressAtom);
+  const appendUploadEvent = useSetAtom(appendUploadEventAtom);
+  const setPartialExtraction = useSetAtom(setPartialExtractionAtom);
+  const markUploadCompleted = useSetAtom(markUploadCompletedAtom);
+  const markUploadFailed = useSetAtom(markUploadFailedAtom);
+
+  return useMemo(
+    () => ({
+      enqueueUploads,
+      setUploadProgress,
+      appendUploadEvent,
+      setPartialExtraction,
+      markUploadCompleted,
+      markUploadFailed
+    }),
+    [
+      appendUploadEvent,
+      enqueueUploads,
+      markUploadCompleted,
+      markUploadFailed,
+      setPartialExtraction,
+      setUploadProgress
+    ]
+  );
 }

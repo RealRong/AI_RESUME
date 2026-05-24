@@ -5,6 +5,11 @@
 
 - UI 组件必须严格基于 `shadcn/ui`
 - 风格必须保持**黑白极简**
+- 全局样式源文件明确为 [apps/web/src/global.css](/Users/realrong/Desktop/AI_RESUME/apps/web/src/global.css)
+- 不允许 `apps/web/src/app/globals.css` 和 `apps/web/src/global.css` 双源并行维护，后续实现必须收敛为单一样式入口
+- API 调用必须语义化 domain 分割，不允许页面直接散写 `fetch` / `apiRequest`
+- 前端请求与状态修改必须通过 `useInstance()` 或等价全局 instance 进入，调用形式明确为 `instance.xxx.xxx(...)`
+- `atom`、`actions`、`selectors`、`hooks`、`api` 都必须按领域拆分
 - 前端状态必须继续遵循 [JOTAI_DOMAIN_GUIDE.md](/Users/realrong/Desktop/AI_RESUME/JOTAI_DOMAIN_GUIDE.md)
 - 页面与交互实现必须与 [DESIGN.md](/Users/realrong/Desktop/AI_RESUME/DESIGN.md) 和 [API_CONTRACT.md](/Users/realrong/Desktop/AI_RESUME/API_CONTRACT.md) 对齐
 
@@ -31,13 +36,41 @@
 - 禁止渐变主视觉继续扩散到业务页面
 - 强调留白、边框、排版、层级，而不是靠颜色堆信息
 - 卡片、面板、表格、弹层都采用低噪音风格
+- 颜色使用必须以 [apps/web/src/global.css](/Users/realrong/Desktop/AI_RESUME/apps/web/src/global.css) 中已有的语义 token 为准
+- 不允许在实现中重新回退到 `zinc-*`、`slate-*` 这类调色板硬编码作为主要设计语言
+- 默认颜色语义约定：
+  - 主色使用 `primary`
+  - 次级信息使用 `muted` / `muted-foreground`
+  - 强调与交互高亮使用 `accent`
+  - 正文文本使用 `foreground`
+  - 边框与输入线使用 `border` / `input`
 
-建议基调：
+推荐写法：
 
-- 背景：`white` / `zinc-50`
-- 文本：`zinc-950` / `zinc-700` / `zinc-500`
-- 边框：`zinc-200` / `zinc-300`
-- 强调：仅通过粗细、对比度、间距表达
+- `bg-background`
+- `text-foreground`
+- `text-muted-foreground`
+- `bg-muted`
+- `text-accent-foreground`
+- `bg-accent`
+- `border-border`
+
+禁止继续在文档或代码中以这类形式约束视觉：
+
+- `bg-white`
+- `text-zinc-950`
+- `text-zinc-500`
+- `border-zinc-200`
+
+如果现有 Tailwind 配置不足以支持语义化 class，可以新增：
+
+- `tailwind preset.cjs`
+- 或等价的 `tailwind` 主题扩展配置
+
+目的只有一个：
+
+- 允许页面统一使用 `text-fg-muted`、`text-accent`、`bg-background`、`border-border` 这类语义化 class
+- 禁止每个页面自己挑具体灰阶色号
 
 ## 2.2 组件来源约束
 
@@ -63,6 +96,42 @@
   - `Separator`
   - `ScrollArea`
   - `Tooltip`
+
+## 2.3 API 与状态约束
+
+- 页面组件不允许直接调用 `fetch`
+- 页面组件不允许直接调用通用 `apiRequest(...)`
+- 页面组件不允许直接 `setAtom(...)` 推进业务流程
+- 页面组件不允许直接 `setState(...)` 维护跨组件业务状态
+- 允许局部 `useState` 的范围仅限：
+  - 输入框临时值
+  - hover / open / focus 这类纯局部 UI 态
+  - 不需要跨组件共享、也不需要持久化的瞬时交互
+
+必须采用的模式：
+
+- 通过 `useInstance()` 或等价全局实例 hook 获取 instance
+- 通过 `instance.candidate.xxx(...)`
+- 通过 `instance.upload.xxx(...)`
+- 通过 `instance.job.xxx(...)`
+- 通过 `instance.matching.xxx(...)`
+- 由 instance 内部协调：
+  - API 请求
+  - actions 调用
+  - 状态更新
+  - 错误处理
+
+页面层只负责：
+
+- 组装参数
+- 绑定 UI 事件
+- 消费领域 hooks 暴露出的状态
+
+页面层不负责：
+
+- 直接写请求 URL
+- 直接处理返回数据到 atom
+- 直接定义业务状态迁移逻辑
 
 ---
 
@@ -93,15 +162,20 @@
 
 要做的事：
 
-- 重构 [apps/web/src/app/globals.css](/Users/realrong/Desktop/AI_RESUME/apps/web/src/app/globals.css)
-- 定义黑白灰 CSS variables
+- 以 [apps/web/src/global.css](/Users/realrong/Desktop/AI_RESUME/apps/web/src/global.css) 作为全局样式唯一来源
+- 调整 [apps/web/src/app/layout.tsx](/Users/realrong/Desktop/AI_RESUME/apps/web/src/app/layout.tsx) 的样式引入路径，避免继续依赖 `app/globals.css`
+- 清理或废弃 [apps/web/src/app/globals.css](/Users/realrong/Desktop/AI_RESUME/apps/web/src/app/globals.css)，避免双份样式入口
+- 严格复用 `global.css` 中已有的语义变量，不再额外引入新的展示层灰阶命名
 - 统一圆角、边框、阴影、焦点样式
 - 统一页面最大宽度、留白、标题层级
 - 明确桌面端主布局的间距系统
+- 如有必要，增加 `tailwind preset.cjs` 或 theme mapping，让语义 token 可以直接映射到规范 class 名
 
 验收标准：
 
 - 全站不再依赖彩色背景氛围
+- 样式入口只保留一个，且明确为 `apps/web/src/global.css`
+- 页面主要颜色 class 均来自语义 token，而不是具体灰阶色板名
 - 页面看起来像专业产品，而不是 demo landing page
 
 ## 4.2 初始化 shadcn/ui 组件集合
@@ -140,6 +214,57 @@
 
 - 新页面和新业务组件不再直接手写重复的基础 UI
 
+## 4.2A 建立领域化 API Instance 层
+
+目标：
+
+- 统一前端请求入口和状态修改入口
+
+要做的事：
+
+- 在 `apps/web/src` 下建立 instance 体系，例如：
+  - `instance/upload`
+  - `instance/candidate`
+  - `instance/job`
+  - `instance/matching`
+- 提供 `useInstance()` 或等价全局入口
+- 统一请求调用形式为 `instance.domain.action(...)`
+- 将 API 请求、数据整形、actions 分发收敛到 instance 层
+- 页面中移除直接的 `fetch`、`apiRequest`、`setAtom`
+
+建议结构：
+
+```text
+apps/web/src/instance
+├── index.ts
+├── provider.tsx
+├── types.ts
+├── upload
+│   ├── api.ts
+│   ├── instance.ts
+│   └── mapper.ts
+├── candidate
+├── job
+└── matching
+```
+
+建议调用形式：
+
+```ts
+const instance = useInstance();
+
+await instance.upload.createUploads(files);
+await instance.candidate.fetchList();
+await instance.job.saveDraft(input);
+await instance.matching.createMatching(payload);
+```
+
+验收标准：
+
+- 页面组件中看不到散落的请求调用
+- 页面组件中看不到业务性质的 `setAtom` / `setState`
+- 请求入口与领域状态修改入口都统一收敛到 instance
+
 ## 4.3 重构页面 Shell
 
 目标：
@@ -171,8 +296,8 @@
 - 建立 `UploadQueueList`
 - 建立 `UploadProgressCard`
 - 建立 `ExtractionEventPanel`
-- 接入 `POST /api/uploads`
-- 接入 `GET /api/uploads/:uploadId/events`
+- 通过 `instance.upload.createUploads(...)` 接入 `POST /api/uploads`
+- 通过 `instance.upload.subscribeUploadEvents(...)` 接入 `GET /api/uploads/:uploadId/events`
 - 在 `upload-domain` 中维护上传队列与事件流状态
 
 验收标准：
@@ -192,7 +317,7 @@
 - 重构 [apps/web/src/features/candidate/candidate-list-feature.tsx](/Users/realrong/Desktop/AI_RESUME/apps/web/src/features/candidate/candidate-list-feature.tsx)
 - 使用 `shadcn/ui` 的 `Table`、`Tabs`、`Badge`、`Input`、`Select`
 - 加入搜索栏、状态筛选、排序切换、视图切换
-- 接入 `GET /api/candidates`
+- 通过 `instance.candidate.fetchList(...)` 接入 `GET /api/candidates`
 - 让 `candidate-domain` 驱动列表状态
 
 验收标准：
@@ -219,7 +344,7 @@
   - `CandidateWorkCard`
   - `CandidatePdfPreviewCard`
   - `CandidateMatchingSummaryCard`
-- 接入 `GET /api/candidates/:candidateId`
+- 通过 `instance.candidate.fetchDetail(...)` 接入 `GET /api/candidates/:candidateId`
 - 预留人工修正入口
 
 验收标准：
@@ -240,9 +365,9 @@
 - 建立 `JobListPanel`
 - 建立 `JobEditorForm`
 - 建立 `SkillTagEditor`
-- 接入 `GET /api/jobs`
-- 接入 `POST /api/jobs`
-- 接入 `PATCH /api/jobs/:jobId`
+- 通过 `instance.job.fetchList(...)` 接入 `GET /api/jobs`
+- 通过 `instance.job.createJob(...)` 接入 `POST /api/jobs`
+- 通过 `instance.job.updateJob(...)` 接入 `PATCH /api/jobs/:jobId`
 
 验收标准：
 
@@ -262,7 +387,7 @@
 - 建立 `MatchingScoreCards`
 - 建立 `MatchingRadarChart`
 - 建立 `MatchingSummaryPanel`
-- 接入 `POST /api/matchings`
+- 通过 `instance.matching.createMatching(...)` 接入 `POST /api/matchings`
 
 验收标准：
 
@@ -298,7 +423,9 @@
 前端继续开发时必须遵守：
 
 - 不新增散乱 atom
+- `atom`、`actions`、`selectors`、`hooks`、`instance`、`api` 一律按领域组织
 - 页面组件只调用 domain hooks
+- 页面组件只通过 `useInstance()` 或等价入口发起业务请求
 - 服务端实体数据与本地交互态分层
 - 上传页的 SSE 状态统一放在 `upload-domain`
 - 候选人筛选、分页、选择态统一放在 `candidate-domain`
@@ -334,6 +461,27 @@
   - `toggleCandidate`
   - `hydrateResults`
 
+同时补齐以下 instance 能力：
+
+- `upload-instance`
+  - `createUploads`
+  - `subscribeUploadEvents`
+  - `disposeUploadStream`
+
+- `candidate-instance`
+  - `fetchList`
+  - `fetchDetail`
+  - `updateStatus`
+  - `updateCandidate`
+
+- `job-instance`
+  - `fetchList`
+  - `createJob`
+  - `updateJob`
+
+- `matching-instance`
+  - `createMatching`
+
 ---
 
 ## 6. 样式红线
@@ -346,6 +494,12 @@
 - 高饱和按钮到处出现
 - 页面元素阴影过重
 - 用颜色代替排版层级
+- 使用 `zinc-*`、`slate-*`、`gray-*` 等具体调色板 class 作为页面主表达
+- 出现和 `global.css` 语义 token 平行的一套自定义颜色命名
+- 页面中直接写 `fetch('/api/...')`
+- 页面中直接写 `apiRequest('/api/...')`
+- 页面中直接调用 `setAtom(...)` 驱动业务流程
+- 页面中直接调用跨组件业务 `setState(...)`
 
 允许的强调方式：
 
@@ -355,6 +509,7 @@
 - 分割线
 - 留白
 - 局部深色按钮
+- 基于 `primary / muted / accent / foreground / border` 的语义色差
 
 ---
 
@@ -380,4 +535,4 @@
 - 候选人列表与详情接通真实 API
 - 全局 loading / error / empty 状态齐全
 - Jotai 领域建模没有被破坏
-
+- API 请求与状态更新均通过语义化 domain instance 进入

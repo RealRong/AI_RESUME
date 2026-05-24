@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import "./globals.css";
+import "../global.css";
+import { InstanceProvider } from "@/instance";
 
 export const metadata: Metadata = {
   title: "AI Resume Platform",
@@ -11,7 +12,9 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="zh-CN">
-      <body>{children}</body>
+      <body>
+        <InstanceProvider>{children}</InstanceProvider>
+      </body>
     </html>
   );
 }

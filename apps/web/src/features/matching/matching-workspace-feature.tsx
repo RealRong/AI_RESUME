@@ -1,24 +1,167 @@
+"use client";
+
+import { useEffect } from "react";
 import { PageShell } from "@/components/common/page-shell";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/common/empty-state";
+import { Progress } from "@/components/ui/progress";
+import { useInstance } from "@/instance";
+import { useJobState } from "@/domains/job/hooks";
+import { useMatchingWorkspaceActions, useMatchingWorkspaceState } from "@/domains/matching/hooks";
+import { useCandidateListState } from "@/domains/candidate/hooks";
 
 export function MatchingWorkspaceFeature() {
+  const instance = useInstance();
+  const { list: jobList } = useJobState();
+  const { remote: candidateRemote } = useCandidateListState();
+  const { workspace, results } = useMatchingWorkspaceState();
+  const actions = useMatchingWorkspaceActions();
+
+  useEffect(() => {
+    void instance.job.fetchList();
+    void instance.candidate.fetchList();
+  }, [instance]);
+
+  async function runMatching() {
+    if (!workspace.jobId || workspace.candidateIds.length === 0) return;
+    await instance.matching.createMatching({
+      jobId: workspace.jobId,
+      candidateIds: workspace.candidateIds
+    });
+  }
+
   return (
     <PageShell
       title="岗位匹配分析"
-      description="匹配页会承载 JD 选择、候选人选择、综合评分图表和 AI 评语。当前先铺好工作区结构。"
+      description="匹配配置和结果缓存都由 matching-domain 管理，请求统一通过 matching instance 发起。"
+      actions={
+        <Button
+          onClick={() => void runMatching()}
+          disabled={!workspace.jobId || workspace.candidateIds.length === 0 || results.loading}
+        >
+          开始评分
+        </Button>
+      }
     >
       <section className="grid gap-6 xl:grid-cols-[0.7fr_1.3fr]">
-        <div className="rounded-3xl border border-slate-200 bg-white/90 p-6">
-          <h2 className="text-xl font-semibold text-slate-900">Matching Config</h2>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
-            后续接入 JD 选择器、候选人对比选择和评分触发按钮。
-          </p>
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>选择 JD</CardTitle>
+              <CardDescription>只通过 matching-domain 记录当前 jobId。</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {jobList.items.length === 0 ? (
+                <EmptyState title="暂无 JD" description="先到 JD 页面创建岗位，再回到这里执行评分。" />
+              ) : (
+                jobList.items.map((job) => (
+                  <button
+                    key={job.id}
+                    type="button"
+                    onClick={() => actions.setJobId(job.id)}
+                    className={`w-full rounded-lg border p-4 text-left transition ${
+                      workspace.jobId === job.id ? "border-primary bg-muted/60" : "border-border hover:bg-muted/40"
+                    }`}
+                  >
+                    <p className="font-medium">{job.title}</p>
+                    <p className="mt-2 line-clamp-2 text-sm text-fg-muted">{job.description}</p>
+                  </button>
+                ))
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>选择候选人</CardTitle>
+              <CardDescription>最多选择 3 位。页面不直接维护共享选择状态。</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {candidateRemote.items.length === 0 ? (
+                <EmptyState title="暂无候选人" description="先上传并完成简历解析，候选人才能参与匹配。" />
+              ) : (
+                candidateRemote.items.map((candidate) => {
+                  const active = workspace.candidateIds.includes(candidate.id);
+                  return (
+                    <button
+                      key={candidate.id}
+                      type="button"
+                      onClick={() => actions.toggleCandidate(candidate.id)}
+                      className={`flex w-full items-center justify-between gap-3 rounded-lg border p-4 text-left transition ${
+                        active ? "border-primary bg-muted/60" : "border-border hover:bg-muted/40"
+                      }`}
+                    >
+                      <div>
+                        <p className="font-medium">{candidate.name ?? "未识别姓名"}</p>
+                        <p className="text-sm text-fg-muted">{candidate.skills.join(", ") || "暂无技能"}</p>
+                      </div>
+                      {active ? <Badge>已选</Badge> : null}
+                    </button>
+                  );
+                })
+              )}
+            </CardContent>
+          </Card>
         </div>
-        <div className="rounded-3xl border border-slate-200 bg-white/90 p-6">
-          <h2 className="text-xl font-semibold text-slate-900">Charts & Summary</h2>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
-            后续接入雷达图、柱状图、综合分环形图与 AI 评语摘要。
-          </p>
-        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>评分结果</CardTitle>
+            <CardDescription>当前后端返回结构化评分摘要，这里先用极简卡片代替复杂图表。</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {results.error ? (
+              <EmptyState title="评分失败" description={results.error} />
+            ) : results.loading ? (
+              <p className="text-sm text-fg-muted">正在生成评分结果...</p>
+            ) : results.items.length === 0 ? (
+              <EmptyState title="暂无评分结果" description="选择 JD 和候选人后点击“开始评分”。" />
+            ) : (
+              results.items.map((result) => (
+                <div key={result.matchingId} className="space-y-4 rounded-lg border border-border p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm text-fg-muted">Candidate ID</p>
+                      <p className="font-medium">{result.candidateId}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-fg-muted">综合分</p>
+                      <p className="text-3xl font-semibold">{result.overallScore}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <div className="mb-2 flex items-center justify-between text-sm">
+                        <span>技能匹配</span>
+                        <span>{result.dimensionScores.skillMatch}</span>
+                      </div>
+                      <Progress value={result.dimensionScores.skillMatch} />
+                    </div>
+                    <div>
+                      <div className="mb-2 flex items-center justify-between text-sm">
+                        <span>经验相关性</span>
+                        <span>{result.dimensionScores.experienceRelevance}</span>
+                      </div>
+                      <Progress value={result.dimensionScores.experienceRelevance} />
+                    </div>
+                    <div>
+                      <div className="mb-2 flex items-center justify-between text-sm">
+                        <span>教育契合度</span>
+                        <span>{result.dimensionScores.educationFit}</span>
+                      </div>
+                      <Progress value={result.dimensionScores.educationFit} />
+                    </div>
+                  </div>
+                  <div className="rounded-md bg-muted/50 p-4 text-sm leading-6 text-fg-muted">
+                    {result.summary}
+                  </div>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
       </section>
     </PageShell>
   );

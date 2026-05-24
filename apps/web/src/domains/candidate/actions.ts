@@ -13,6 +13,29 @@ export const setCandidateKeywordAtom = atom(null, (_get, set, keyword: string) =
   }));
 });
 
+export const setCandidatePageAtom = atom(null, (_get, set, page: number) => {
+  set(candidateListStateAtom, (prev) => ({
+    ...prev,
+    query: {
+      ...prev.query,
+      page
+    }
+  }));
+});
+
+export const setCandidateViewModeAtom = atom(
+  null,
+  (_get, set, viewMode: "table" | "card") => {
+    set(candidateListStateAtom, (prev) => ({
+      ...prev,
+      query: {
+        ...prev.query,
+        viewMode
+      }
+    }));
+  }
+);
+
 export const hydrateCandidateListAtom = atom(
   null,
   (_get, set, payload: { items: CandidateListItem[]; total: number }) => {
@@ -24,6 +47,30 @@ export const hydrateCandidateListAtom = atom(
         total: payload.total,
         loading: false,
         error: null
+      }
+    }));
+  }
+);
+
+export const setCandidateListLoadingAtom = atom(null, (_get, set, loading: boolean) => {
+  set(candidateListStateAtom, (prev) => ({
+    ...prev,
+    remote: {
+      ...prev.remote,
+      loading
+    }
+  }));
+});
+
+export const setCandidateListErrorAtom = atom(
+  null,
+  (_get, set, error: string | null) => {
+    set(candidateListStateAtom, (prev) => ({
+      ...prev,
+      remote: {
+        ...prev.remote,
+        error,
+        loading: false
       }
     }));
   }

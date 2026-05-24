@@ -11,6 +11,9 @@
 - 页面组件不允许直接定义业务 atom
 - 不允许把筛选器、弹窗、选中项拆成遍地 atom
 - 所有写操作必须经由 actions 或 domain hooks
+- 所有业务请求必须经由 domain instance，不允许页面直接请求后再手动 set
+- 页面组件禁止直接使用 `setAtom` 编排业务流程
+- 页面组件禁止用跨组件业务 `setState` 代替领域状态
 
 ---
 
@@ -68,6 +71,16 @@ domains/candidate
 ├── selectors.ts
 ├── actions.ts
 ├── hooks.ts
+└── types.ts
+```
+
+同时配套：
+
+```text
+instance/candidate
+├── api.ts
+├── instance.ts
+├── mapper.ts
 └── types.ts
 ```
 
@@ -133,10 +146,13 @@ type CandidateListState = {
 - `useUploadQueueState()`
 - `useUploadQueueActions()`
 - `useMatchingWorkspaceState()`
+- `useInstance()`
 
 页面不直接消费：
 
 - `useAtom(candidateListStateAtom)` 后到处手写 set
+- `fetch(...)` 后手动 `hydrateList(...)`
+- `apiRequest(...)` 后手动散写多个 `setAtom(...)`
 
 ---
 
@@ -163,6 +179,31 @@ type CandidateListState = {
 - `setPartialExtraction(uploadId, payload)`
 - `markUploadCompleted(uploadId, candidateId)`
 - `markUploadFailed(uploadId, error)`
+
+## instance 接口
+
+### candidate instance
+
+- `fetchList(query)`
+- `fetchDetail(candidateId)`
+- `updateStatus(candidateId, input)`
+- `updateCandidate(candidateId, input)`
+
+### upload instance
+
+- `createUploads(files)`
+- `subscribeUploadEvents(uploadId)`
+- `disposeUploadStream(uploadId)`
+
+### job instance
+
+- `fetchList()`
+- `createJob(input)`
+- `updateJob(jobId, input)`
+
+### matching instance
+
+- `createMatching(input)`
 
 ---
 
@@ -198,4 +239,6 @@ Jotai 中的数据分为两类：
 - 组件树跨层直接 set 多个 atom 协调业务
 - 没有 actions 层，页面直接拼写状态结构
 - 同一领域状态分别存在于 React state、Jotai、URL 三处且无统一来源
-
+- 页面直接调用 `fetch` / `apiRequest` 后修改业务 atom
+- 页面直接用 `setAtom` 或 `setState` 管理跨组件业务状态
+- instance、api、actions 没有按领域目录拆分
